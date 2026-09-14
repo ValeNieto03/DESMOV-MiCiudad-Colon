@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "MiCiudad",
-    "slug": "MiCiudad",
+    "slug": "mi-ciudad-colon",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -17,7 +17,8 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.desmovgrupo16.miciudadcolon"
     },
     "web": {
       "output": "static",
@@ -37,6 +38,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c09c5370-cf81-4899-a9c3-b4beb41758d1"
+      }
+    },
+    "owner": "desmov-grupo-16"
   }
 }
