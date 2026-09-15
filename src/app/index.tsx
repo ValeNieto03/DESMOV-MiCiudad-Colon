@@ -1,106 +1,90 @@
-import { StyleSheet, Text, View, Pressable } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Encabezado */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.smallTitle}>GUÍA TURÍSTICA</Text>
-          <Text style={styles.title}>Colón</Text>
-          <Text style={styles.subtitle}>
-            Descubrí todo lo que esta ciudad tiene para vos
-          </Text>
-        </View>
+    <View style={styles.screen}>
+      <SafeAreaView style={styles.container}>
+        {/* Encabezado */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.smallTitle}>GUÍA TURÍSTICA</Text>
+            <Text style={styles.title}>Colón</Text>
+            <Text style={styles.subtitle}>
+              Descubrí todo lo que esta ciudad tiene para vos
+            </Text>
+          </View>
 
-        <Pressable style={styles.profileButton}>
-          <Text style={styles.profileIcon}>👤</Text>
-        </Pressable>
-      </View>
-
-      {/* Buscador */}
-      <Pressable style={styles.search}>
-        <Text style={styles.searchIcon}>⌕</Text>
-        <Text style={styles.searchText}>¿Qué querés conocer?</Text>
-      </Pressable>
-
-      {/* Mapa */}
-      <View style={styles.mapCard}>
-        <View style={styles.mapBackground}>
-          <Text style={styles.mapEmoji}>📍</Text>
-          <Text style={styles.mapTitle}>Mapa de Colón</Text>
-          <Text style={styles.mapSubtitle}>
-            Lugares turísticos cerca tuyo
-          </Text>
-
-          <Pressable style={styles.mapButton}>
-            <Text style={styles.mapButtonText}>Ver mapa</Text>
+          <Pressable style={styles.profileButton}>
+            <Text style={styles.profileIcon}>👤</Text>
           </Pressable>
         </View>
-      </View>
 
-      {/* Lugares cercanos */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Lo que tenés cerca</Text>
-        <Text style={styles.seeMore}>Ver todos</Text>
-      </View>
-
-      <View style={styles.placeCard}>
-        <View style={styles.placeIcon}>
-          <Text>♨️</Text>
-        </View>
-
-        <View style={styles.placeInfo}>
-          <Text style={styles.placeName}>Termas de Colón</Text>
-          <Text style={styles.placeCategory}>Termas</Text>
-          <Text style={styles.placeDistance}>900 m</Text>
-        </View>
-
-        <Text style={styles.arrow}>›</Text>
-      </View>
-
-      <View style={styles.placeCard}>
-        <View style={styles.placeIcon}>
-          <Text>🏖️</Text>
-        </View>
-
-        <View style={styles.placeInfo}>
-          <Text style={styles.placeName}>Playa Paso Vela</Text>
-          <Text style={styles.placeCategory}>Playas</Text>
-          <Text style={styles.placeDistance}>1,1 km</Text>
-        </View>
-
-        <Text style={styles.arrow}>›</Text>
-      </View>
-
-      {/* Navegación inferior */}
-      <View style={styles.bottomNav}>
-        <Pressable style={styles.navItem}>
-          <Text style={styles.navIcon}>🗺️</Text>
-          <Text style={styles.navTextActive}>Mapa</Text>
+        {/* Buscador */}
+        <Pressable style={styles.search}>
+          <Text style={styles.searchIcon}>⌕</Text>
+          <Text style={styles.searchText}>¿Qué querés conocer?</Text>
         </Pressable>
 
-        <Pressable style={styles.navItem}>
-          <Text style={styles.navIcon}>📅</Text>
-          <Text style={styles.navText}>Agenda</Text>
-        </Pressable>
+        {/* Mapa */}
+        <View style={styles.mapCard}>
+          <View style={styles.mapBackground}>
+            <Text style={styles.mapEmoji}>📍</Text>
+            <Text style={styles.mapTitle}>Mapa de Colón</Text>
+            <Text style={styles.mapSubtitle}>
+              Lugares turísticos cerca tuyo
+            </Text>
 
-        <Pressable style={styles.navItem}>
-          <Text style={styles.navIcon}>🧭</Text>
-          <Text style={styles.navText}>Mi recorrido</Text>
-        </Pressable>
+            <Pressable style={styles.mapButton}>
+              <Text style={styles.mapButtonText}>Ver mapa</Text>
+            </Pressable>
+          </View>
+        </View>
 
-        <Pressable style={styles.navItem}>
-          <Text style={styles.navIcon}>👤</Text>
-          <Text style={styles.navText}>Yo</Text>
-        </Pressable>
-      </View>
-    </SafeAreaView>
+        {/* Lugares cercanos */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Lo que tenés cerca</Text>
+          <Text style={styles.seeMore}>Ver todos</Text>
+        </View>
+
+        <View style={styles.placeCard}>
+          <View style={styles.placeIcon}>
+            <Text>♨️</Text>
+          </View>
+
+          <View style={styles.placeInfo}>
+            <Text style={styles.placeName}>Termas de Colón</Text>
+            <Text style={styles.placeCategory}>Termas</Text>
+            <Text style={styles.placeDistance}>900 m</Text>
+          </View>
+
+          <Text style={styles.arrow}>›</Text>
+        </View>
+
+        <View style={styles.placeCard}>
+          <View style={styles.placeIcon}>
+            <Text>🏖️</Text>
+          </View>
+
+          <View style={styles.placeInfo}>
+            <Text style={styles.placeName}>Playa Paso Vela</Text>
+            <Text style={styles.placeCategory}>Playas</Text>
+            <Text style={styles.placeDistance}>1,1 km</Text>
+          </View>
+
+          <Text style={styles.arrow}>›</Text>
+        </View>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: '#F8F6F1',
+  },
+
   container: {
     flex: 1,
     backgroundColor: '#F8F6F1',
@@ -283,39 +267,5 @@ const styles = StyleSheet.create({
     fontSize: 28,
     color: '#AAA69D',
     paddingHorizontal: 5,
-  },
-
-  bottomNav: {
-    marginTop: 'auto',
-    height: 70,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E8E5DD',
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    marginHorizontal: -20,
-  },
-
-  navItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-  },
-
-  navIcon: {
-    fontSize: 20,
-    marginBottom: 3,
-  },
-
-  navText: {
-    fontSize: 10,
-    color: '#77736B',
-  },
-
-  navTextActive: {
-    fontSize: 10,
-    color: '#253A32',
-    fontWeight: '800',
   },
 });
