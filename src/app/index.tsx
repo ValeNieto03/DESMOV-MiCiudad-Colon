@@ -51,6 +51,8 @@ export default function HomeScreen() {
   const [selectedPlaceId, setSelectedPlaceId] =
     useState('centro-colon');
 
+  const [scrollEnabled, setScrollEnabled] = useState(true);
+
   const selectedPlace =
     lugares.find((lugar) => lugar.id === selectedPlaceId) ??
     lugares[0];
@@ -91,6 +93,8 @@ export default function HomeScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
+          scrollEnabled={scrollEnabled}
+          nestedScrollEnabled={true}
         >
 
           {/* Encabezado */}
@@ -138,6 +142,10 @@ export default function HomeScreen() {
             <WebView
               ref={webViewRef}
               originWhitelist={['*']}
+              nestedScrollEnabled={true}
+              onTouchStart={() => setScrollEnabled(false)}
+              onTouchEnd={() => setScrollEnabled(true)}
+              onTouchCancel={() => setScrollEnabled(true)}
               onMessage={(event) => {
                 const placeId = event.nativeEvent.data;
 
