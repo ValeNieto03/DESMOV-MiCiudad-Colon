@@ -7,6 +7,9 @@ export type Place = {
   direccion: string;
   horario: string;
   precio: string;
+  imagen?: any;
+  telefono?: string;
+  web?: string;
   latitud: number;
   longitud: number;
 };
@@ -22,6 +25,7 @@ export const lugares: Place[] = [
     direccion: 'Colón, Entre Ríos',
     horario: 'Espacio público',
     precio: 'Entrada libre',
+    imagen: require('../../assets/images/lugares/plaza-washington.jpg'),
     latitud: -32.22477,
     longitud: -58.14261,
   },
@@ -33,9 +37,12 @@ export const lugares: Place[] = [
     icono: '♨️',
     descripcion:
       'Complejo termal de Colón con piscinas y espacios para disfrutar de una jornada de descanso y recreación.',
-    direccion: 'Colón, Entre Ríos',
-    horario: 'Consultar horarios',
+    direccion: 'Batalla de Cepeda 100, Colón, Entre Ríos',
+    horario: 'Todos los días de 9:00 a 20:00 hs.',
     precio: 'Consultar tarifa',
+    imagen: require('../../assets/images/lugares/termas-colon.jpg'),
+    telefono: '+54 3447 434761',
+    web: 'https://termascolon.gov.ar/',
     latitud: -32.20895,
     longitud: -58.14675,
   },
@@ -50,6 +57,7 @@ export const lugares: Place[] = [
     direccion: 'Colón, Entre Ríos',
     horario: 'Espacio público',
     precio: 'Entrada libre',
+    imagen: require('../../assets/images/lugares/parque-quiros.jpg'),
     latitud: -32.22623,
     longitud: -58.13261,
   },
@@ -64,8 +72,9 @@ export const lugares: Place[] = [
     direccion: 'Colón, Entre Ríos',
     horario: 'Consultar temporada',
     precio: 'Consultar',
-    latitud: -32.22687,
-    longitud: -58.1308,
+    imagen: require('../../assets/images/lugares/playa-inkier.jpg'),
+    latitud: -32.22772,
+    longitud: -58.12838,
   },
 
   {
@@ -75,11 +84,12 @@ export const lugares: Place[] = [
     icono: '⚓',
     descripcion:
       'Zona tradicional de la ciudad ubicada junto al río Uruguay, ideal para pasear y disfrutar del paisaje.',
-    direccion: 'Colón, Entre Ríos',
+    direccion: 'Av. Gdor. Quiros 99-149, Colón, Entre Ríos',
     horario: 'Espacio público',
     precio: 'Entrada libre',
-    latitud: -32.21556,
-    longitud: -58.13583,
+    imagen: require('../../assets/images/lugares/puerto-colon.jpg'),
+    latitud: -32.21577,
+    longitud: -58.13604,
   },
 
   {
@@ -89,9 +99,12 @@ export const lugares: Place[] = [
     icono: '🏛️',
     descripcion:
       'Sitio histórico y patrimonial cercano a Colón que conserva uno de los antiguos molinos de la región.',
-    direccion: 'Colonia San José, Ruta Provincial 26',
+    direccion: 'Primeros Colonos s/n, Colón, Entre Ríos',
     horario: 'Consultar horarios',
-    precio: '$1.500',
+    precio: '$5.000',
+    imagen: require('../../assets/images/lugares/molino-forclaz.jpg'),
+    telefono: '+54 9 3447 577133',
+    web: 'https://molinoforclaz.com/',
     latitud: -32.2172,
     longitud: -58.18665,
   },

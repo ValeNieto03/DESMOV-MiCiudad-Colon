@@ -1,4 +1,7 @@
 import {
+  Alert,
+  Image,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,11 +13,61 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { lugares } from '@/data/lugares';
 
+import * as Location from 'expo-location';
+
 export default function LugarDetalleScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
 
   const lugar = lugares.find((item) => item.id === id);
+
+  const abrirRuta = async () => {
+    if (!lugar) return;
+
+    try {
+      const { status } =
+        await Location.requestForegroundPermissionsAsync();
+
+      if (status !== 'granted') {
+        Alert.alert(
+          'Ubicación necesaria',
+          'Necesitamos tu ubicación para calcular la ruta hasta este lugar.'
+        );
+        return;
+      }
+
+      const ubicacion = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      const origenLat = ubicacion.coords.latitude;
+      const origenLon = ubicacion.coords.longitude;
+
+      const url =
+        `https://www.google.com/maps/dir/?api=1` +
+        `&origin=${origenLat},${origenLon}` +
+        `&destination=${lugar.latitud},${lugar.longitud}`;
+
+      await Linking.openURL(url);
+    } catch (error) {
+      Alert.alert(
+        'No se pudo obtener la ubicación',
+        'Intentá nuevamente en unos segundos.'
+      );
+    }
+  };
+
+  const llamar = () => {
+    if (!lugar?.telefono) return;
+
+    Linking.openURL(`tel:${lugar.telefono}`);
+  };
+
+  const abrirWeb = () => {
+    if (!lugar?.web) return;
+
+    Linking.openURL(lugar.web);
+  };
 
   if (!lugar) {
     return (
@@ -72,9 +125,17 @@ export default function LugarDetalleScreen() {
           </View>
 
           <View style={styles.hero}>
-            <Text style={styles.heroIcon}>
-              {lugar.icono}
-            </Text>
+            {lugar.imagen ? (
+              <Image
+                source={lugar.imagen}
+                style={styles.heroImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <Text style={styles.heroIcon}>
+                {lugar.icono}
+              </Text>
+            )}
           </View>
 
           <View style={styles.categoryBadge}>
@@ -140,7 +201,10 @@ export default function LugarDetalleScreen() {
           </View>
 
           <View style={styles.actions}>
-            <Pressable style={styles.primaryButton}>
+            <Pressable
+              style={styles.primaryButton}
+              onPress={abrirRuta}
+            >
               <Text style={styles.primaryButtonIcon}>
                 🧭
               </Text>
@@ -170,6 +234,48 @@ export default function LugarDetalleScreen() {
               Registrar visita
             </Text>
           </Pressable>
+
+          {lugar.telefono && (
+            <Pressable
+              style={styles.contactButton}
+              onPress={llamar}
+            >
+              <Text style={styles.contactButtonIcon}>
+                📞
+              </Text>
+
+              <View style={styles.contactButtonContent}>
+                <Text style={styles.contactButtonLabel}>
+                  Teléfono
+                </Text>
+
+                <Text style={styles.contactButtonText}>
+                  {lugar.telefono}
+                </Text>
+              </View>
+            </Pressable>
+          )}
+
+          {lugar.web && (
+            <Pressable
+              style={styles.contactButton}
+              onPress={abrirWeb}
+            >
+              <Text style={styles.contactButtonIcon}>
+                🌐
+              </Text>
+
+              <View style={styles.contactButtonContent}>
+                <Text style={styles.contactButtonLabel}>
+                  Sitio web
+                </Text>
+
+                <Text style={styles.contactButtonText}>
+                  Visitar sitio oficial
+                </Text>
+              </View>
+            </Pressable>
+          )}
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -243,6 +349,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 8,
+  },
+
+  heroImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
   },
 
   heroIcon: {
@@ -390,6 +502,42 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '800',
+  },
+
+  contactButton: {
+    minHeight: 62,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E3E1D8',
+    marginTop: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  contactButtonIcon: {
+    fontSize: 24,
+    width: 40,
+  },
+
+  contactButtonContent: {
+    flex: 1,
+  },
+
+  contactButtonLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#77736B',
+    textTransform: 'uppercase',
+  },
+
+  contactButtonText: {
+    fontSize: 14,
+    color: '#30352F',
+    fontWeight: '700',
+    marginTop: 2,
   },
 
   errorContainer: {
