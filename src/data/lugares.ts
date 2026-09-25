@@ -8,6 +8,7 @@ export type Place = {
   horario: string;
   precio: string;
   imagen?: any;
+  audio?: any;
   telefono?: string;
   web?: string;
   latitud: number;
@@ -41,6 +42,7 @@ export const lugares: Place[] = [
     horario: 'Todos los días de 9:00 a 20:00 hs.',
     precio: 'Consultar tarifa',
     imagen: require('../../assets/images/lugares/termas-colon.jpg'),
+    audio: require('../../assets/audios/termas-colon.mp3'),
     telefono: '+54 3447 434761',
     web: 'https://termascolon.gov.ar/',
     latitud: -32.20895,

@@ -10,16 +10,38 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-
 import { lugares } from '@/data/lugares';
-
 import * as Location from 'expo-location';
+import {
+  useAudioPlayer,
+  useAudioPlayerStatus,
+} from 'expo-audio';
 
 export default function LugarDetalleScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
 
   const lugar = lugares.find((item) => item.id === id);
+
+  const player = useAudioPlayer(lugar?.audio);
+
+  const audioStatus = useAudioPlayerStatus(player);
+
+  const alternarAudio = () => {
+    if (!lugar?.audio) {
+      Alert.alert(
+        'Audioguía no disponible',
+        'La audioguía de este lugar todavía no está disponible.'
+      );
+      return;
+    }
+
+    if (audioStatus.playing) {
+      player.pause();
+    } else {
+      player.play();
+    }
+  };
 
   const abrirRuta = async () => {
     if (!lugar) return;
@@ -214,13 +236,16 @@ export default function LugarDetalleScreen() {
               </Text>
             </Pressable>
 
-            <Pressable style={styles.secondaryButton}>
+            <Pressable
+              style={styles.secondaryButton}
+              onPress={alternarAudio}
+            >
               <Text style={styles.secondaryButtonIcon}>
-                🎧
+                {audioStatus.playing ? '⏸️' : '🎧'}
               </Text>
 
               <Text style={styles.secondaryButtonText}>
-                Audioguía
+                {audioStatus.playing ? 'Pausar' : 'Audioguía'}
               </Text>
             </Pressable>
           </View>
