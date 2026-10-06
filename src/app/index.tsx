@@ -11,6 +11,7 @@ import { WebView } from 'react-native-webview';
 import { useRouter } from 'expo-router';
 
 import { lugares } from '@/data/lugares';
+import { inicializarBaseDeDatos } from '@/servicios/visitas';
 
 function calcularDistanciaKm(
   lat1: number,
@@ -75,11 +76,27 @@ export default function HomeScreen() {
   const webViewRef = useRef<WebView>(null);
 
   useEffect(() => {
+    try {
+      inicializarBaseDeDatos();
+
+      console.log(
+        'Base de datos inicializada correctamente'
+      );
+    } catch (error) {
+      console.error(
+        'Error al inicializar la base de datos:',
+        error
+      );
+    }
+  }, []);
+
+  useEffect(() => {
     webViewRef.current?.injectJavaScript(`
       if (window.focusSelectedPlace) {
         window.focusSelectedPlace(
           ${selectedPlace.latitud},
-          ${selectedPlace.longitud}
+          ${selectedPlace.longitud},
+          '${selectedPlace.id}'
         );
       }
       true;
@@ -176,6 +193,18 @@ export default function HomeScreen() {
                           margin: 0;
                           padding: 0;
                         }
+
+                        .lugar-label {
+                          background: white;
+                          color: #253A32;
+                          border: 1px solid #D8E4E2;
+                          border-radius: 8px;
+                          padding: 4px 8px;
+                          font-size: 12px;
+                          font-weight: 700;
+                          white-space: nowrap;
+                          box-shadow: 0 2px 6px rgba(0,0,0,0.20);
+                        }
                       </style>
                     </head>
 
@@ -190,8 +219,72 @@ export default function HomeScreen() {
                           14
                         );
 
-                        window.focusSelectedPlace = function(lat, lon) {
+                        const marcadores = {};
+
+                        function crearIconoSeleccionado(nombre) {
+                          return L.divIcon({
+                            className: '',
+                            html: \`
+                              <div style="
+                                display: flex;
+                                align-items: center;
+                                gap: 6px;
+                                transform: translateY(-2px);
+                              ">
+                                <div style="
+                                  width: 24px;
+                                  height: 24px;
+                                  background: #2F7F8F;
+                                  border: 4px solid white;
+                                  border-radius: 50%;
+                                  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+                                  flex-shrink: 0;
+                                "></div>
+
+                                <div class="lugar-label">
+                                  \${nombre}
+                                </div>
+                              </div>
+                            \`,
+                            iconSize: [180, 32],
+                            iconAnchor: [12, 16],
+                          });
+                        }
+
+                        function crearIconoNormal() {
+                          return L.divIcon({
+                            className: '',
+                            html: \`
+                              <div style="
+                                width: 16px;
+                                height: 16px;
+                                background: #6B8E5A;
+                                border: 3px solid white;
+                                border-radius: 50%;
+                                box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+                              "></div>
+                            \`,
+                            iconSize: [16, 16],
+                            iconAnchor: [8, 8],
+                          });
+                        }
+
+                        function actualizarMarcadorSeleccionado(idSeleccionado) {
+                          lugares.forEach(function(lugar) {
+                            if (marcadores[lugar.id]) {
+                              marcadores[lugar.id].setIcon(
+                                lugar.id === idSeleccionado
+                                  ? crearIconoSeleccionado(lugar.nombre)
+                                  : crearIconoNormal()
+                              );
+                            }
+                          });
+                        }
+
+                        window.focusSelectedPlace = function(lat, lon, id) {
                           map.setView([lat, lon], 14);
+
+                          actualizarMarcadorSeleccionado(id);
                         };
 
                         L.tileLayer(
@@ -211,12 +304,21 @@ export default function HomeScreen() {
                 )};
 
                         lugares.forEach(function(lugar) {
-                          const marcador = L.marker([
-                            lugar.latitud,
-                            lugar.longitud
-                          ])
+                          const marcador = L.marker(
+                            [
+                              lugar.latitud,
+                              lugar.longitud
+                            ],
+                            {
+                              icon: crearIconoNormal()
+                            }
+                          )
                             .addTo(map)
-                            .bindPopup('<b>' + lugar.nombre + '</b>');
+                            .bindPopup(
+                              '<b>' + lugar.nombre + '</b>'
+                            );
+
+                          marcadores[lugar.id] = marcador;
 
                           marcador.on('click', function() {
                             window.ReactNativeWebView.postMessage(
@@ -224,6 +326,8 @@ export default function HomeScreen() {
                             );
                           });
                         });
+
+                        actualizarMarcadorSeleccionado('centro-colon');
                       </script>
                     </body>
                   </html>

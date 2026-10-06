@@ -7,11 +7,16 @@ export default function BottomNav() {
 
   return (
     <View style={styles.bottomNav}>
+
+      {/* MAPA */}
       <Pressable
         style={styles.navItem}
         onPress={() => router.push('/')}
       >
-        <Text style={styles.navIcon}>🗺️</Text>
+        <Text style={styles.navIcon}>
+          🗺️
+        </Text>
+
         <Text
           style={
             pathname === '/'
@@ -23,30 +28,18 @@ export default function BottomNav() {
         </Text>
       </Pressable>
 
+      {/* MI RECORRIDO */}
       <Pressable
         style={styles.navItem}
-        onPress={() => router.push('/agenda')}
+        onPress={() => router.push('/mi-recorrido')}
       >
-        <Text style={styles.navIcon}>📅</Text>
-        <Text
-          style={
-            pathname === '/agenda'
-              ? styles.navTextActive
-              : styles.navText
-          }
-        >
-          Agenda
+        <Text style={styles.navIcon}>
+          🧭
         </Text>
-      </Pressable>
 
-      <Pressable
-        style={styles.navItem}
-        onPress={() => router.push('/recorrido')}
-      >
-        <Text style={styles.navIcon}>🧭</Text>
         <Text
           style={
-            pathname === '/recorrido'
+            pathname === '/mi-recorrido'
               ? styles.navTextActive
               : styles.navText
           }
@@ -55,11 +48,15 @@ export default function BottomNav() {
         </Text>
       </Pressable>
 
+      {/* MI PERFIL */}
       <Pressable
         style={styles.navItem}
         onPress={() => router.push('/yo')}
       >
-        <Text style={styles.navIcon}>👤</Text>
+        <Text style={styles.navIcon}>
+          👤
+        </Text>
+
         <Text
           style={
             pathname === '/yo'
@@ -67,9 +64,10 @@ export default function BottomNav() {
               : styles.navText
           }
         >
-          Yo
+          Mi perfil
         </Text>
       </Pressable>
+
     </View>
   );
 }
