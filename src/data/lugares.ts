@@ -1,5 +1,6 @@
 export type Place = {
   id: string;
+  apiId?: string;
   nombre: string;
   categoria: string;
   icono: string;
@@ -75,7 +76,7 @@ Esperamos que hayas disfrutado de este recorrido por la Plaza Washington.`,
       'Complejo termal de Colón con piscinas y espacios para disfrutar de una jornada de descanso y recreación.',
     direccion: 'Batalla de Cepeda 100, Colón, Entre Ríos',
     horario: 'Todos los días de 9:00 a 20:00 hs.',
-    precio: 'Consultar tarifa',
+    precio: 'Consultar entradas',
     imagen: require('../../assets/images/lugares/termas-colon.jpg'),
     audio: require('../../assets/audios/termas-colon.mp3'),
 
@@ -169,7 +170,7 @@ Esperamos que hayas disfrutado de este recorrido por el Parque Dr. Herminio Quir
       'Una de las playas de Colón para disfrutar del río Uruguay, el paisaje y las actividades al aire libre.',
     direccion: 'Colón, Entre Ríos',
     horario: 'Consultar temporada',
-    precio: 'Consultar',
+    precio: 'Consultar entradas',
     imagen: require('../../assets/images/lugares/playa-inkier.jpg'),
     audio: require('../../assets/audios/playa-inkier.mp3'),
     transcripcion: `Bienvenidos a Playa Inkier, uno de los espacios de playa que podemos disfrutar durante una visita a la ciudad de Colón, Entre Ríos.
@@ -255,7 +256,7 @@ Esperamos que hayas disfrutado de este recorrido por el Puerto de Colón.`,
       'Sitio histórico y patrimonial cercano a Colón que conserva uno de los antiguos molinos de la región.',
     direccion: 'Primeros Colonos s/n, Colón, Entre Ríos',
     horario: 'Consultar horarios',
-    precio: '$5.000',
+    precio: 'Consultar entradas',
     imagen: require('../../assets/images/lugares/molino-forclaz.jpg'),
     audio: require('../../assets/audios/molino-forclaz.mp3'),
     transcripcion: `Bienvenidos al Museo Provincial Molino Forclaz, uno de los sitios históricos y culturales más importantes de la zona de Colón y San José, en Entre Ríos.

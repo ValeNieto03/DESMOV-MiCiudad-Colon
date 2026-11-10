@@ -1,22 +1,28 @@
+
 import * as SQLite from 'expo-sqlite';
+import type { Place } from '@/data/lugares';
 
 export type OrigenVisita = 'qr' | 'gps' | 'manual';
 
 export interface Visita {
-    id: string;
-    usuarioId: string;
-    lugarId: string;
-    fechaHora: string;
-    origen: OrigenVisita;
-    fotoUri: string | null;
-    nota: string | null;
-    sincronizada: boolean;
+  id: string;
+  usuarioId: string;
+  lugarId: string;
+  fechaHora: string;
+  origen: OrigenVisita;
+  fotoUri: string | null;
+  nota: string | null;
+  sincronizada: boolean;
 }
 
 const db = SQLite.openDatabaseSync('mi-ciudad.db');
 
+// --------------------------------------------------
+// INICIALIZAR BASE DE DATOS
+// --------------------------------------------------
+
 export function inicializarBaseDeDatos() {
-    db.execSync(`
+  db.execSync(`
     CREATE TABLE IF NOT EXISTS visitas (
       id TEXT PRIMARY KEY NOT NULL,
       usuarioId TEXT NOT NULL,
@@ -27,12 +33,24 @@ export function inicializarBaseDeDatos() {
       nota TEXT,
       sincronizada INTEGER NOT NULL DEFAULT 0
     );
+
+    CREATE TABLE IF NOT EXISTS lugares (
+      id TEXT PRIMARY KEY NOT NULL,
+      datos TEXT NOT NULL,
+      actualizadoEn TEXT NOT NULL
+    );
   `);
+
+  console.log('Base de datos inicializada correctamente');
 }
 
+// --------------------------------------------------
+// GUARDAR VISITA
+// --------------------------------------------------
+
 export function guardarVisita(visita: Visita) {
-    db.runSync(
-        `
+  db.runSync(
+    `
       INSERT INTO visitas (
         id,
         usuarioId,
@@ -45,31 +63,35 @@ export function guardarVisita(visita: Visita) {
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?);
     `,
-        visita.id,
-        visita.usuarioId,
-        visita.lugarId,
-        visita.fechaHora,
-        visita.origen,
-        visita.fotoUri,
-        visita.nota,
-        visita.sincronizada ? 1 : 0
-    );
+    visita.id,
+    visita.usuarioId,
+    visita.lugarId,
+    visita.fechaHora,
+    visita.origen,
+    visita.fotoUri,
+    visita.nota,
+    visita.sincronizada ? 1 : 0
+  );
 
-    console.log('✅ VISITA GUARDADA EN SQLITE:', visita);
+  console.log('VISITA GUARDADA EN SQLITE:', visita);
 }
 
+// --------------------------------------------------
+// OBTENER VISITAS
+// --------------------------------------------------
+
 export function obtenerVisitas(): Visita[] {
-    const resultados = db.getAllSync<{
-        id: string;
-        usuarioId: string;
-        lugarId: string;
-        fechaHora: string;
-        origen: string;
-        fotoUri: string | null;
-        nota: string | null;
-        sincronizada: number;
-    }>(
-        `
+  const resultados = db.getAllSync<{
+    id: string;
+    usuarioId: string;
+    lugarId: string;
+    fechaHora: string;
+    origen: string;
+    fotoUri: string | null;
+    nota: string | null;
+    sincronizada: number;
+  }>(
+    `
       SELECT
         id,
         usuarioId,
@@ -82,16 +104,68 @@ export function obtenerVisitas(): Visita[] {
       FROM visitas
       ORDER BY fechaHora DESC;
     `
-    );
+  );
 
-    return resultados.map((visita) => ({
-        id: visita.id,
-        usuarioId: visita.usuarioId,
-        lugarId: visita.lugarId,
-        fechaHora: visita.fechaHora,
-        origen: visita.origen as OrigenVisita,
-        fotoUri: visita.fotoUri,
-        nota: visita.nota,
-        sincronizada: visita.sincronizada === 1,
-    }));
+  return resultados.map((visita) => ({
+    id: visita.id,
+    usuarioId: visita.usuarioId,
+    lugarId: visita.lugarId,
+    fechaHora: visita.fechaHora,
+    origen: visita.origen as OrigenVisita,
+    fotoUri: visita.fotoUri,
+    nota: visita.nota,
+    sincronizada: visita.sincronizada === 1,
+  }));
+}
+
+// --------------------------------------------------
+// GUARDAR LUGARES
+// --------------------------------------------------
+
+export function guardarLugaresLocales(lugares: Place[]) {
+  const insertar = db.prepareSync(`
+    INSERT OR REPLACE INTO lugares (
+      id,
+      datos,
+      actualizadoEn
+    )
+    VALUES (?, ?, ?);
+  `);
+
+  const fecha = new Date().toISOString();
+
+  try {
+    db.withTransactionSync(() => {
+      for (const lugar of lugares) {
+        insertar.executeSync(
+          lugar.id,
+          JSON.stringify(lugar),
+          fecha
+        );
+      }
+    });
+
+    console.log(
+      `LUGARES GUARDADOS EN SQLITE: ${lugares.length}`
+    );
+  } finally {
+    insertar.finalizeSync();
+  }
+}
+
+// --------------------------------------------------
+// RECUPERAR LUGARES
+// --------------------------------------------------
+
+export function obtenerLugaresLocales(): Place[] {
+  const resultados = db.getAllSync<{
+    datos: string;
+  }>(`
+    SELECT datos
+    FROM lugares;
+  `);
+
+  return resultados.map((registro) =>
+    JSON.parse(registro.datos) as Place
+  );
 }

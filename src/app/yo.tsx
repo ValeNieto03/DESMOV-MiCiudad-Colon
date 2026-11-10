@@ -1,3 +1,4 @@
+
 import { useCallback, useState } from 'react';
 import {
   Alert,
@@ -88,9 +89,7 @@ export default function YoScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.title}>
-            Yo
-          </Text>
+          <Text style={styles.title}>Yo</Text>
 
           <Text style={styles.subtitle}>
             Tu cuenta, favoritos y preferencias
@@ -98,41 +97,37 @@ export default function YoScreen() {
         </View>
 
         {!usuario ? (
-          <>
-            <View style={styles.card}>
-              <Text style={styles.cardIcon}>
-                👤
+          <View style={styles.card}>
+            <Text style={styles.cardIcon}>👤</Text>
+
+            <Text style={styles.cardTitle}>
+              Iniciá sesión
+            </Text>
+
+            <Text style={styles.cardDescription}>
+              Creá tu cuenta o iniciá sesión para guardar
+              tus lugares favoritos y agendar los eventos
+              que quieras disfrutar.
+            </Text>
+
+            <Pressable
+              style={styles.primaryButton}
+              onPress={() => router.push('/login')}
+            >
+              <Text style={styles.primaryButtonText}>
+                Iniciar sesión
               </Text>
+            </Pressable>
 
-              <Text style={styles.cardTitle}>
-                Iniciá sesión
+            <Pressable
+              style={styles.secondaryButton}
+              onPress={() => router.push('/registro')}
+            >
+              <Text style={styles.secondaryButtonText}>
+                Crear una cuenta
               </Text>
-
-              <Text style={styles.cardDescription}>
-                Creá tu cuenta o iniciá sesión para
-                guardar favoritos, registrar visitas
-                y consultar tu recorrido.
-              </Text>
-
-              <Pressable
-                style={styles.primaryButton}
-                onPress={() => router.push('/login')}
-              >
-                <Text style={styles.primaryButtonText}>
-                  Iniciar sesión
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={styles.secondaryButton}
-                onPress={() => router.push('/registro')}
-              >
-                <Text style={styles.secondaryButtonText}>
-                  Crear una cuenta
-                </Text>
-              </Pressable>
-            </View>
-          </>
+            </Pressable>
+          </View>
         ) : (
           <>
             <View style={styles.profileCard}>
@@ -158,9 +153,7 @@ export default function YoScreen() {
                 style={styles.option}
                 onPress={() => router.push('/favoritos')}
               >
-                <Text style={styles.optionIcon}>
-                  ❤️
-                </Text>
+                <Text style={styles.optionIcon}>❤️</Text>
 
                 <View style={styles.optionContent}>
                   <Text style={styles.optionTitle}>
@@ -172,34 +165,28 @@ export default function YoScreen() {
                   </Text>
                 </View>
 
-                <Text style={styles.arrow}>
-                  ›
-                </Text>
+                <Text style={styles.arrow}>›</Text>
               </Pressable>
 
               <View style={styles.separator} />
 
               <Pressable
                 style={styles.option}
-                onPress={() => router.push('/mi-recorrido')}
+                onPress={() => router.push('/mi-agenda')}
               >
-                <Text style={styles.optionIcon}>
-                  🗺️
-                </Text>
+                <Text style={styles.optionIcon}>📅</Text>
 
                 <View style={styles.optionContent}>
                   <Text style={styles.optionTitle}>
-                    Mi recorrido
+                    Mi agenda
                   </Text>
 
                   <Text style={styles.optionDescription}>
-                    Tus visitas registradas
+                    Eventos que guardaste
                   </Text>
                 </View>
 
-                <Text style={styles.arrow}>
-                  ›
-                </Text>
+                <Text style={styles.arrow}>›</Text>
               </Pressable>
             </View>
 
@@ -223,39 +210,32 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8F6F1',
   },
-
   content: {
     padding: 24,
     paddingBottom: 40,
   },
-
   header: {
     marginBottom: 28,
   },
-
   title: {
     fontSize: 30,
     fontWeight: '800',
     color: '#253A32',
   },
-
   subtitle: {
     marginTop: 8,
     fontSize: 15,
     color: '#77736B',
   },
-
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-
   loadingText: {
     fontSize: 15,
     color: '#77736B',
   },
-
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
@@ -264,18 +244,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E1D8',
   },
-
   cardIcon: {
     fontSize: 42,
     marginBottom: 12,
   },
-
   cardTitle: {
     fontSize: 22,
     fontWeight: '800',
     color: '#253A32',
   },
-
   cardDescription: {
     marginTop: 10,
     fontSize: 14,
@@ -284,7 +261,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 22,
   },
-
   primaryButton: {
     width: '100%',
     height: 52,
@@ -293,13 +269,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '800',
   },
-
   secondaryButton: {
     width: '100%',
     height: 52,
@@ -308,13 +282,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
   },
-
   secondaryButtonText: {
     color: '#2F7F8F',
     fontSize: 15,
     fontWeight: '700',
   },
-
   profileCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
@@ -324,7 +296,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E1D8',
   },
-
   avatar: {
     width: 58,
     height: 58,
@@ -333,30 +304,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
   avatarText: {
     color: '#FFFFFF',
     fontSize: 24,
     fontWeight: '800',
   },
-
   profileInfo: {
     marginLeft: 15,
     flex: 1,
   },
-
   greeting: {
     fontSize: 19,
     fontWeight: '800',
     color: '#253A32',
   },
-
   email: {
     marginTop: 4,
     fontSize: 14,
     color: '#77736B',
   },
-
   optionsCard: {
     marginTop: 18,
     backgroundColor: '#FFFFFF',
@@ -365,47 +331,39 @@ const styles = StyleSheet.create({
     borderColor: '#E5E1D8',
     overflow: 'hidden',
   },
-
   option: {
     minHeight: 78,
     paddingHorizontal: 18,
     flexDirection: 'row',
     alignItems: 'center',
   },
-
   optionIcon: {
     fontSize: 24,
     width: 42,
   },
-
   optionContent: {
     flex: 1,
   },
-
   optionTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: '#253A32',
   },
-
   optionDescription: {
     marginTop: 4,
     fontSize: 13,
     color: '#77736B',
   },
-
   arrow: {
     fontSize: 28,
     color: '#AAA59C',
     marginLeft: 8,
   },
-
   separator: {
     height: 1,
     backgroundColor: '#ECE8DF',
     marginLeft: 60,
   },
-
   logoutButton: {
     height: 52,
     borderRadius: 14,
@@ -415,7 +373,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 22,
   },
-
   logoutText: {
     color: '#A34A3A',
     fontSize: 15,

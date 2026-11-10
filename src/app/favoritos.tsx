@@ -11,7 +11,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 
-import { lugares } from '@/data/lugares';
+import { obtenerLugaresIntegrados } from '@/servicios/lugares-integrados';
+import type { Place } from '@/data/lugares';
 import {
     eliminarFavorito,
     obtenerFavoritos,
@@ -20,6 +21,8 @@ import { obtenerUsuarioActual } from '@/servicios/autenticacion';
 
 export default function FavoritosScreen() {
     const router = useRouter();
+
+    const [lugaresDisponibles, setLugaresDisponibles] = useState<Place[]>([]);
 
     const [favoritos, setFavoritos] = useState<string[]>([]);
     const [cargando, setCargando] = useState(true);
@@ -32,14 +35,27 @@ export default function FavoritosScreen() {
 
             if (!usuario) {
                 setFavoritos([]);
+                setLugaresDisponibles([]);
                 return;
             }
 
-            const favoritosGuardados = await obtenerFavoritos(usuario.id);
+            const [favoritosGuardados, lugaresIntegrados] = await Promise.all([
+                obtenerFavoritos(usuario.id),
+                obtenerLugaresIntegrados(),
+            ]);
+
+            console.log('⭐ IDs favoritos:', favoritosGuardados);
+            console.log(
+                '📍 IDs del catálogo:',
+                lugaresIntegrados.map((lugar) => lugar.id)
+            );
 
             setFavoritos(favoritosGuardados);
+            setLugaresDisponibles(lugaresIntegrados);
+
         } catch (error) {
             console.log('❌ ERROR AL CARGAR FAVORITOS:', error);
+
             Alert.alert(
                 'Error',
                 'No se pudieron cargar tus favoritos.'
@@ -55,7 +71,8 @@ export default function FavoritosScreen() {
         }, [cargarFavoritos])
     );
 
-    const lugaresFavoritos = lugares.filter((lugar) =>
+    const lugaresFavoritos = lugaresDisponibles.filter((lugar) =>
+        favoritos.includes(lugar.apiId ?? lugar.id) ||
         favoritos.includes(lugar.id)
     );
 
@@ -208,7 +225,7 @@ export default function FavoritosScreen() {
                                     style={styles.removeButton}
                                     onPress={(event) => {
                                         event.stopPropagation();
-                                        quitarFavorito(lugar.id);
+                                        quitarFavorito(lugar.apiId ?? lugar.id);
                                     }}
                                 >
                                     <Text style={styles.removeIcon}>♥</Text>

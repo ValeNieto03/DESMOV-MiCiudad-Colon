@@ -1,3 +1,4 @@
+
 import { useRef, useState } from 'react';
 import {
     Alert,
@@ -19,13 +20,18 @@ import { registrarUsuario } from '@/servicios/autenticacion';
 export default function RegistroScreen() {
     const router = useRouter();
 
-    const repetirPasswordRef = useRef<TextInput>(null);
+    const repetirPasswordRef =
+        useRef<import('react-native').TextInputInstance>(null);
 
     const [nombre, setNombre] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [repetirPassword, setRepetirPassword] = useState('');
     const [cargando, setCargando] = useState(false);
+
+    const [mostrarPassword, setMostrarPassword] = useState(false);
+    const [mostrarRepetirPassword, setMostrarRepetirPassword] =
+        useState(false);
 
     async function manejarRegistro() {
         if (!nombre.trim()) {
@@ -52,10 +58,10 @@ export default function RegistroScreen() {
             return;
         }
 
-        if (password.length < 6) {
+        if (password.length < 8) {
             Alert.alert(
                 'Contraseña demasiado corta',
-                'La contraseña debe tener al menos 6 caracteres.'
+                'La contraseña debe tener al menos 8 caracteres.'
             );
             return;
         }
@@ -123,19 +129,14 @@ export default function RegistroScreen() {
         <SafeAreaView style={styles.container}>
             <KeyboardAvoidingView
                 style={styles.keyboard}
-                behavior={
-                    Platform.OS === 'ios'
-                        ? 'padding'
-                        : 'height'
-                }
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
                 <ScrollView
                     contentContainerStyle={styles.content}
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                 >
-
-                    {/* Encabezado */}
+                    {/* Volver */}
                     <Pressable
                         style={styles.backButton}
                         onPress={() => router.back()}
@@ -145,6 +146,7 @@ export default function RegistroScreen() {
                         </Text>
                     </Pressable>
 
+                    {/* Encabezado */}
                     <View style={styles.header}>
                         <Text style={styles.title}>
                             Crear una cuenta
@@ -197,18 +199,32 @@ export default function RegistroScreen() {
                             Contraseña
                         </Text>
 
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Mínimo 6 caracteres"
-                            placeholderTextColor="#99958C"
-                            value={password}
-                            onChangeText={setPassword}
-                            secureTextEntry
-                            returnKeyType="next"
-                            onSubmitEditing={() => {
-                                repetirPasswordRef.current?.focus();
-                            }}
-                        />
+                        <View style={styles.passwordContainer}>
+                            <TextInput
+                                style={styles.passwordInput}
+                                placeholder="Mínimo 8 caracteres"
+                                placeholderTextColor="#99958C"
+                                value={password}
+                                onChangeText={setPassword}
+                                secureTextEntry={!mostrarPassword}
+                                returnKeyType="next"
+                                onSubmitEditing={() => {
+                                    repetirPasswordRef.current?.focus();
+                                }}
+                            />
+
+                            <Pressable
+                                style={styles.eyeButton}
+                                onPress={() =>
+                                    setMostrarPassword(!mostrarPassword)
+                                }
+                                hitSlop={8}
+                            >
+                                <Text style={styles.eyeText}>
+                                    {mostrarPassword ? '🙈' : '👁️'}
+                                </Text>
+                            </Pressable>
+                        </View>
                     </View>
 
                     {/* Repetir contraseña */}
@@ -217,25 +233,40 @@ export default function RegistroScreen() {
                             Repetir contraseña
                         </Text>
 
-                        <TextInput
-                            ref={repetirPasswordRef}
-                            style={styles.input}
-                            placeholder="Volvé a ingresar tu contraseña"
-                            placeholderTextColor="#99958C"
-                            value={repetirPassword}
-                            onChangeText={setRepetirPassword}
-                            secureTextEntry
-                            returnKeyType="done"
-                            onSubmitEditing={manejarRegistro}
-                        />
+                        <View style={styles.passwordContainer}>
+                            <TextInput
+                                ref={repetirPasswordRef}
+                                style={styles.passwordInput}
+                                placeholder="Volvé a ingresar tu contraseña"
+                                placeholderTextColor="#99958C"
+                                value={repetirPassword}
+                                onChangeText={setRepetirPassword}
+                                secureTextEntry={!mostrarRepetirPassword}
+                                returnKeyType="done"
+                                onSubmitEditing={manejarRegistro}
+                            />
+
+                            <Pressable
+                                style={styles.eyeButton}
+                                onPress={() =>
+                                    setMostrarRepetirPassword(
+                                        !mostrarRepetirPassword
+                                    )
+                                }
+                                hitSlop={8}
+                            >
+                                <Text style={styles.eyeText}>
+                                    {mostrarRepetirPassword ? '🙈' : '👁️'}
+                                </Text>
+                            </Pressable>
+                        </View>
                     </View>
 
-                    {/* Botón */}
+                    {/* Crear cuenta */}
                     <Pressable
                         style={[
                             styles.registerButton,
-                            cargando &&
-                            styles.registerButtonDisabled,
+                            cargando && styles.registerButtonDisabled,
                         ]}
                         onPress={manejarRegistro}
                         disabled={cargando}
@@ -247,23 +278,20 @@ export default function RegistroScreen() {
                         </Text>
                     </Pressable>
 
-                    {/* Login */}
+                    {/* Ir al login */}
                     <View style={styles.loginContainer}>
                         <Text style={styles.loginText}>
                             ¿Ya tenés una cuenta?
                         </Text>
 
                         <Pressable
-                            onPress={() =>
-                                router.replace('/login')
-                            }
+                            onPress={() => router.replace('/login')}
                         >
                             <Text style={styles.loginLink}>
                                 Iniciar sesión
                             </Text>
                         </Pressable>
                     </View>
-
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
@@ -335,6 +363,35 @@ const styles = StyleSheet.create({
         paddingHorizontal: 15,
         fontSize: 15,
         color: '#253A32',
+    },
+
+    passwordContainer: {
+        height: 52,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#D8E4E2',
+    },
+
+    passwordInput: {
+        flex: 1,
+        height: '100%',
+        paddingHorizontal: 15,
+        fontSize: 15,
+        color: '#253A32',
+    },
+
+    eyeButton: {
+        height: '100%',
+        paddingHorizontal: 15,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    eyeText: {
+        fontSize: 20,
     },
 
     registerButton: {

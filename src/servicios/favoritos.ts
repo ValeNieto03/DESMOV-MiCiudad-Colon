@@ -1,54 +1,113 @@
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import { consultarAPI } from '@/servicios/api';
 
 const FAVORITOS_KEY = 'mi-ciudad-favoritos';
 
 type FavoritosPorUsuario = Record<string, string[]>;
 
+export interface FavoritoAPI {
+    id: string;
+    usuarioId: string;
+    lugarId: string;
+    creadoEn: string;
+}
+
+interface RespuestaFavoritosAPI {
+    datos: FavoritoAPI[];
+    meta: {
+        total: number;
+        pagina: number;
+        porPagina: number;
+    } | null;
+}
+
 // ------------------------------------------
-// Obtener todos los favoritos guardados
+// Obtener favoritos guardados localmente
 // ------------------------------------------
 
 async function obtenerFavoritosGuardados(): Promise<FavoritosPorUsuario> {
-    const favoritosGuardados =
-        await AsyncStorage.getItem(FAVORITOS_KEY);
+    const favoritosGuardados = await AsyncStorage.getItem(FAVORITOS_KEY);
 
     if (!favoritosGuardados) {
         return {};
     }
 
     try {
-        return JSON.parse(
-            favoritosGuardados
-        ) as FavoritosPorUsuario;
+        return JSON.parse(favoritosGuardados) as FavoritosPorUsuario;
     } catch {
         return {};
     }
 }
 
 // ------------------------------------------
-// Guardar todos los favoritos
+// Guardar favoritos localmente
 // ------------------------------------------
 
 async function guardarFavoritos(
-    favoritos: FavoritosPorUsuario
+    favoritos: FavoritosPorUsuario,
 ): Promise<void> {
     await AsyncStorage.setItem(
         FAVORITOS_KEY,
-        JSON.stringify(favoritos)
+        JSON.stringify(favoritos),
     );
 }
 
 // ------------------------------------------
-// Obtener favoritos de un usuario
+// Actualizar respaldo local
 // ------------------------------------------
 
-export async function obtenerFavoritos(
-    usuarioId: string
-): Promise<string[]> {
-    const favoritos =
-        await obtenerFavoritosGuardados();
+async function actualizarFavoritosLocales(
+    usuarioId: string,
+    lugarIds: string[],
+): Promise<void> {
+    const favoritos = await obtenerFavoritosGuardados();
 
-    return favoritos[usuarioId] ?? [];
+    favoritos[usuarioId] = lugarIds;
+
+    await guardarFavoritos(favoritos);
+}
+
+// ------------------------------------------
+// Obtener favoritos del backend
+// ------------------------------------------
+
+
+export async function obtenerFavoritos(
+    usuarioId: string,
+): Promise<string[]> {
+    try {
+        const favoritosAPI = await consultarAPI<FavoritoAPI[]>(
+            '/yo/favoritos',
+            {},
+            true,
+        );
+
+        console.log('⭐ Favoritos recibidos del backend:', favoritosAPI);
+
+        const lugarIds = favoritosAPI.map(
+            (favorito) => favorito.lugarId,
+        );
+
+        console.log('⭐ IDs de lugares favoritos:', lugarIds);
+
+        await actualizarFavoritosLocales(usuarioId, lugarIds);
+
+        return lugarIds;
+    } catch (error) {
+        console.error('❌ Error al obtener favoritos:', error);
+
+        if (
+            error instanceof Error &&
+            error.message === 'API_NO_DISPONIBLE'
+        ) {
+            const favoritos = await obtenerFavoritosGuardados();
+            return favoritos[usuarioId] ?? [];
+        }
+
+        throw error;
+    }
 }
 
 // ------------------------------------------
@@ -57,10 +116,9 @@ export async function obtenerFavoritos(
 
 export async function esFavorito(
     usuarioId: string,
-    lugarId: string
+    lugarId: string,
 ): Promise<boolean> {
-    const favoritos =
-        await obtenerFavoritos(usuarioId);
+    const favoritos = await obtenerFavoritos(usuarioId);
 
     return favoritos.includes(lugarId);
 }
@@ -71,30 +129,27 @@ export async function esFavorito(
 
 export async function agregarFavorito(
     usuarioId: string,
-    lugarId: string
+    lugarId: string,
 ): Promise<void> {
-    const favoritos =
-        await obtenerFavoritosGuardados();
+    await consultarAPI(
+        `/yo/favoritos/${encodeURIComponent(lugarId)}`,
+        {
+            method: 'PUT',
+        },
+        true,
+    );
 
-    const favoritosUsuario =
-        favoritos[usuarioId] ?? [];
+    const favoritos = await obtenerFavoritosGuardados();
+    const favoritosUsuario = favoritos[usuarioId] ?? [];
 
     if (!favoritosUsuario.includes(lugarId)) {
         favoritos[usuarioId] = [
             ...favoritosUsuario,
             lugarId,
         ];
+
+        await guardarFavoritos(favoritos);
     }
-
-    await guardarFavoritos(favoritos);
-
-    console.log(
-        '❤️ FAVORITO AGREGADO:',
-        {
-            usuarioId,
-            lugarId,
-        }
-    );
 }
 
 // ------------------------------------------
@@ -103,28 +158,23 @@ export async function agregarFavorito(
 
 export async function eliminarFavorito(
     usuarioId: string,
-    lugarId: string
+    lugarId: string,
 ): Promise<void> {
-    const favoritos =
-        await obtenerFavoritosGuardados();
+    await consultarAPI(
+        `/yo/favoritos/${encodeURIComponent(lugarId)}`,
+        {
+            method: 'DELETE',
+        },
+        true,
+    );
 
-    const favoritosUsuario =
-        favoritos[usuarioId] ?? [];
+    const favoritos = await obtenerFavoritosGuardados();
 
-    favoritos[usuarioId] =
-        favoritosUsuario.filter(
-            (id) => id !== lugarId
-        );
+    favoritos[usuarioId] = (
+        favoritos[usuarioId] ?? []
+    ).filter((id) => id !== lugarId);
 
     await guardarFavoritos(favoritos);
-
-    console.log(
-        '💔 FAVORITO ELIMINADO:',
-        {
-            usuarioId,
-            lugarId,
-        }
-    );
 }
 
 // ------------------------------------------
@@ -133,27 +183,15 @@ export async function eliminarFavorito(
 
 export async function alternarFavorito(
     usuarioId: string,
-    lugarId: string
+    lugarId: string,
 ): Promise<boolean> {
-    const favorito =
-        await esFavorito(
-            usuarioId,
-            lugarId
-        );
+    const favorito = await esFavorito(usuarioId, lugarId);
 
     if (favorito) {
-        await eliminarFavorito(
-            usuarioId,
-            lugarId
-        );
-
+        await eliminarFavorito(usuarioId, lugarId);
         return false;
     }
 
-    await agregarFavorito(
-        usuarioId,
-        lugarId
-    );
-
+    await agregarFavorito(usuarioId, lugarId);
     return true;
 }

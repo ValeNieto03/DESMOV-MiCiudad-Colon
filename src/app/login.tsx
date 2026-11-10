@@ -1,9 +1,11 @@
+
 import { useState } from 'react';
 import {
     Alert,
     KeyboardAvoidingView,
     Platform,
     Pressable,
+    ScrollView,
     StyleSheet,
     Text,
     TextInput,
@@ -20,6 +22,7 @@ export default function LoginScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [cargando, setCargando] = useState(false);
+    const [mostrarPassword, setMostrarPassword] = useState(false);
 
     const manejarLogin = async () => {
         if (!email.trim() || !password) {
@@ -27,7 +30,6 @@ export default function LoginScreen() {
                 'Datos incompletos',
                 'Ingresá tu email y contraseña.'
             );
-
             return;
         }
 
@@ -70,20 +72,17 @@ export default function LoginScreen() {
         <SafeAreaView style={styles.container}>
             <KeyboardAvoidingView
                 style={styles.keyboard}
-                behavior={
-                    Platform.OS === 'ios'
-                        ? 'padding'
-                        : undefined
-                }
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
-                <View style={styles.content}>
-
+                <ScrollView
+                    contentContainerStyle={styles.content}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
                     {/* Encabezado */}
                     <View style={styles.header}>
                         <View style={styles.logoContainer}>
-                            <Text style={styles.logoIcon}>
-                                👤
-                            </Text>
+                            <Text style={styles.logoIcon}>👤</Text>
                         </View>
 
                         <Text style={styles.smallTitle}>
@@ -102,7 +101,6 @@ export default function LoginScreen() {
 
                     {/* Formulario */}
                     <View style={styles.form}>
-
                         <Text style={styles.label}>
                             Email
                         </Text>
@@ -122,16 +120,31 @@ export default function LoginScreen() {
                             Contraseña
                         </Text>
 
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Ingresá tu contraseña"
-                            placeholderTextColor="#99968E"
-                            value={password}
-                            onChangeText={setPassword}
-                            secureTextEntry
-                            autoCapitalize="none"
-                            autoCorrect={false}
-                        />
+                        {/* Contraseña con botón para mostrar */}
+                        <View style={styles.passwordContainer}>
+                            <TextInput
+                                style={styles.passwordInput}
+                                placeholder="Ingresá tu contraseña"
+                                placeholderTextColor="#99968E"
+                                value={password}
+                                onChangeText={setPassword}
+                                secureTextEntry={!mostrarPassword}
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                            />
+
+                            <Pressable
+                                style={styles.eyeButton}
+                                onPress={() =>
+                                    setMostrarPassword(!mostrarPassword)
+                                }
+                                hitSlop={8}
+                            >
+                                <Text style={styles.eyeText}>
+                                    {mostrarPassword ? '🙈' : '👁️'}
+                                </Text>
+                            </Pressable>
+                        </View>
 
                         {/* Botón principal */}
                         <Pressable
@@ -158,57 +171,14 @@ export default function LoginScreen() {
                                 Crear una cuenta
                             </Text>
                         </Pressable>
-
                     </View>
-
-                    {/* Cuenta de prueba */}
-                    <View style={styles.demoBox}>
-
-                        <View style={styles.demoHeader}>
-                            <View style={styles.demoIconContainer}>
-                                <Text style={styles.demoIcon}>
-                                    ✓
-                                </Text>
-                            </View>
-
-                            <Text style={styles.demoTitle}>
-                                Cuenta de prueba
-                            </Text>
-                        </View>
-
-                        <View style={styles.demoData}>
-                            <Text style={styles.demoLabel}>
-                                Email
-                            </Text>
-
-                            <Text style={styles.demoText}>
-                                lucia@mail.com
-                            </Text>
-                        </View>
-
-                        <View style={styles.demoData}>
-                            <Text style={styles.demoLabel}>
-                                Contraseña
-                            </Text>
-
-                            <Text style={styles.demoText}>
-                                123456
-                            </Text>
-                        </View>
-
-                    </View>
-
-                </View>
+                </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    // ------------------------------------------
-    // Pantalla
-    // ------------------------------------------
-
     container: {
         flex: 1,
         backgroundColor: '#F7F3E8',
@@ -219,16 +189,12 @@ const styles = StyleSheet.create({
     },
 
     content: {
-        flex: 1,
+        flexGrow: 1,
         paddingHorizontal: 24,
         paddingTop: 25,
-        paddingBottom: 20,
+        paddingBottom: 30,
         justifyContent: 'center',
     },
-
-    // ------------------------------------------
-    // Encabezado
-    // ------------------------------------------
 
     header: {
         alignItems: 'center',
@@ -273,10 +239,6 @@ const styles = StyleSheet.create({
         maxWidth: 330,
     },
 
-    // ------------------------------------------
-    // Formulario
-    // ------------------------------------------
-
     form: {
         width: '100%',
     },
@@ -300,9 +262,35 @@ const styles = StyleSheet.create({
         marginBottom: 17,
     },
 
-    // ------------------------------------------
-    // Botón principal
-    // ------------------------------------------
+    passwordContainer: {
+        height: 52,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#E3E1D8',
+        borderRadius: 12,
+        marginBottom: 17,
+    },
+
+    passwordInput: {
+        flex: 1,
+        height: '100%',
+        paddingHorizontal: 15,
+        fontSize: 16,
+        color: '#253A32',
+    },
+
+    eyeButton: {
+        height: '100%',
+        paddingHorizontal: 15,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    eyeText: {
+        fontSize: 20,
+    },
 
     button: {
         height: 52,
@@ -323,10 +311,6 @@ const styles = StyleSheet.create({
         fontWeight: '800',
     },
 
-    // ------------------------------------------
-    // Botón crear cuenta
-    // ------------------------------------------
-
     secondaryButton: {
         height: 52,
         justifyContent: 'center',
@@ -338,66 +322,5 @@ const styles = StyleSheet.create({
         color: '#2F7F8F',
         fontSize: 15,
         fontWeight: '800',
-    },
-
-    // ------------------------------------------
-    // Cuenta de prueba
-    // ------------------------------------------
-
-    demoBox: {
-        marginTop: 22,
-        padding: 15,
-        borderRadius: 14,
-        backgroundColor: '#E5EFE4',
-        borderWidth: 1,
-        borderColor: '#D5E2D3',
-    },
-
-    demoHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-
-    demoIconContainer: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        backgroundColor: '#6B8E5A',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 9,
-    },
-
-    demoIcon: {
-        color: '#FFFFFF',
-        fontSize: 15,
-        fontWeight: '800',
-    },
-
-    demoTitle: {
-        fontSize: 14,
-        fontWeight: '800',
-        color: '#253A32',
-    },
-
-    demoData: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 5,
-    },
-
-    demoLabel: {
-        width: 90,
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#557448',
-    },
-
-    demoText: {
-        flex: 1,
-        fontSize: 13,
-        color: '#3E493D',
-        fontWeight: '600',
     },
 });

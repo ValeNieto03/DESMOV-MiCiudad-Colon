@@ -1,0 +1,32 @@
+@'
+# Dependencias y compilaciones
+node_modules/
+dist/
+coverage/
+
+# Variables de entorno privadas
+.env
+.env.*
+!.env.example
+
+# Archivos del sistema
+.DS_Store
+*.tsbuildinfo
+
+# Bases de datos locales
+/datos/
+*.sqlite
+*.sqlite3
+*.db
+*.backup
+*.sqlite-journal
+
+# Excepcion: base inicial compartida
+!semilla/api-inicial.sqlite
+
+# Resultados temporales
+resultado-e2e.txt
+'@ | Set-Content ".\api-mi-ciudad\.gitignore" -Encoding UTF8
+# Copias de seguridad de codigo
+*.bak
+*.respaldo-*

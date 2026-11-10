@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   Linking,
@@ -11,12 +12,23 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import {
+  useLocalSearchParams,
+  useRouter,
+  useFocusEffect,
+} from 'expo-router';
 import { lugares } from '@/data/lugares';
+import type { Place } from '@/data/lugares';
+import { obtenerLugaresIntegrados } from '@/servicios/lugares-integrados';
+import {
+  obtenerAudioguiaActivaAPI,
+  type AudioguiaActivaAPI,
+} from '@/servicios/api';
 import * as Location from 'expo-location';
 import {
   useAudioPlayer,
   useAudioPlayerStatus,
+
 } from 'expo-audio';
 
 import {
@@ -48,11 +60,100 @@ const MODO_PRUEBA_GPS = true;
 
 export default function LugarDetalleScreen() {
   const router = useRouter();
-  const { id } = useLocalSearchParams();
 
-  const lugar = lugares.find(
-    (item) => item.id === id
+  const { id } = useLocalSearchParams<{
+    id?: string | string[];
+  }>();
+
+  const idLugar = Array.isArray(id) ? id[0] : id;
+
+  // --------------------------------------------------
+  // LUGARES LOCALES Y LUGARES DE LA API
+  // --------------------------------------------------
+
+  const [lugaresDisponibles, setLugaresDisponibles] =
+    useState<Place[]>(lugares);
+
+  const [cargandoLugar, setCargandoLugar] =
+    useState(true);
+
+  useEffect(() => {
+    let componenteActivo = true;
+
+    async function cargarLugares() {
+      try {
+        const lugaresIntegrados =
+          await obtenerLugaresIntegrados();
+
+        if (componenteActivo) {
+          setLugaresDisponibles(lugaresIntegrados);
+        }
+      } catch (error) {
+        console.warn(
+          'No se pudieron cargar los lugares integrados:',
+          error
+        );
+      } finally {
+        if (componenteActivo) {
+          setCargandoLugar(false);
+        }
+      }
+    }
+
+    cargarLugares();
+
+    return () => {
+      componenteActivo = false;
+    };
+  }, []);
+
+  const lugar = lugaresDisponibles.find(
+    (item) => item.id === idLugar
   );
+
+  const [audioguiaActiva, setAudioguiaActiva] =
+    useState<AudioguiaActivaAPI | null>(null);
+
+  useEffect(() => {
+    let componenteActivo = true;
+
+    async function cargarAudioguiaActiva() {
+      if (!lugar?.id) {
+        setAudioguiaActiva(null);
+        return;
+      }
+
+      setAudioguiaActiva(null);
+
+      try {
+        const audioguia =
+          await obtenerAudioguiaActivaAPI(lugar.id);
+
+        if (componenteActivo) {
+          setAudioguiaActiva(audioguia);
+        }
+      } catch (error) {
+        console.warn(
+          'No se pudo consultar la audioguía activa:',
+          error
+        );
+      }
+    }
+
+    cargarAudioguiaActiva();
+
+    return () => {
+      componenteActivo = false;
+    };
+  }, [lugar?.id]);
+
+  const audioParaReproducir = audioguiaActiva?.url
+    ? { uri: audioguiaActiva.url }
+    : lugar?.audio;
+
+  const transcripcionParaMostrar =
+    audioguiaActiva?.transcripcion ||
+    lugar?.transcripcion;
 
   const [mostrarTranscripcion, setMostrarTranscripcion] =
     useState(false);
@@ -77,18 +178,38 @@ export default function LugarDetalleScreen() {
   const audioStatus = useAudioPlayerStatus(player);
 
   // --------------------------------------------------
+  // DETENER AUDIO AL SALIR DE LA PANTALLA
+  // --------------------------------------------------
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        player.pause();
+
+        console.log(
+          'Audioguía pausada al salir del detalle:',
+          lugar?.id
+        );
+      };
+    }, [player, lugar?.id])
+  );
+
+  // --------------------------------------------------
   // COMPROBAR SI EL LUGAR ES FAVORITO
   // --------------------------------------------------
 
   useEffect(() => {
+    let componenteActivo = true;
+
     const cargarEstadoFavorito = async () => {
       if (!lugar) {
         return;
       }
 
       try {
-        const usuario =
-          await obtenerUsuarioActual();
+        const usuario = await obtenerUsuarioActual();
+
+        if (!componenteActivo) return;
 
         if (!usuario) {
           setFavorito(false);
@@ -97,29 +218,34 @@ export default function LugarDetalleScreen() {
 
         const resultado = await esFavorito(
           usuario.id,
-          lugar.id
+          lugar.apiId ?? lugar.id
         );
+
+        if (!componenteActivo) return;
 
         setFavorito(resultado);
 
-        console.log(
-          '❤️ Estado favorito:',
-          {
-            lugarId: lugar.id,
-            favorito: resultado,
-          }
-        );
+        console.log('❤️ Estado favorito:', {
+          lugarId: lugar.id,
+          favorito: resultado,
+        });
       } catch (error) {
         console.error(
           '❌ Error al comprobar favorito:',
           error
         );
 
-        setFavorito(false);
+        if (componenteActivo) {
+          setFavorito(false);
+        }
       }
     };
 
     cargarEstadoFavorito();
+
+    return () => {
+      componenteActivo = false;
+    };
   }, [lugar?.id]);
 
   // --------------------------------------------------
@@ -155,11 +281,10 @@ export default function LugarDetalleScreen() {
 
       setCargandoFavorito(true);
 
-      const nuevoEstado =
-        await alternarFavorito(
-          sesion.usuario.id,
-          lugar.id
-        );
+      const nuevoEstado = await alternarFavorito(
+        sesion.usuario.id,
+        lugar.apiId ?? lugar.id
+      );
 
       setFavorito(nuevoEstado);
 
@@ -193,59 +318,95 @@ export default function LugarDetalleScreen() {
   // AUDIO
   // --------------------------------------------------
 
-  const alternarAudio = () => {
-    if (!lugar?.audio) {
+
+
+
+  const alternarAudio = async () => {
+    if (!audioParaReproducir) {
       Alert.alert(
         'Audioguía no disponible',
         'La audioguía de este lugar todavía no está disponible.'
       );
-
       return;
     }
 
-    if (audioStatus.playing) {
-      player.pause();
-    } else {
+    try {
+      if (audioStatus.playing) {
+        player.pause();
+        return;
+      }
+
+      await player.replace(audioParaReproducir);
       player.play();
+
+      console.log('ID DEL LUGAR:', lugar?.id);
+      console.log(
+        'AUDIO REPRODUCIDO:',
+        JSON.stringify(audioParaReproducir)
+      );
+    } catch (error) {
+      console.error(
+        'Error al reproducir la audioguía:',
+        error
+      );
+
+      Alert.alert(
+        'Error de reproducción',
+        'No se pudo cargar la audioguía. Intentá nuevamente.'
+      );
     }
   };
+
+
 
   // --------------------------------------------------
   // COMPROBAR SESIÓN ANTES DE REGISTRAR UNA VISITA
   // --------------------------------------------------
 
   const abrirRegistroDeVisita = async () => {
-    const sesion = await obtenerSesion();
+    try {
+      const sesion = await obtenerSesion();
 
-    if (!sesion) {
-      Alert.alert(
-        'Necesitás iniciar sesión',
-        'Para registrar una visita necesitás tener una cuenta.',
-        [
-          {
-            text: 'Cancelar',
-            style: 'cancel',
-          },
-          {
-            text: 'Iniciar sesión',
-            onPress: () => router.push('/login'),
-          },
-        ]
+      if (!sesion) {
+        Alert.alert(
+          'Necesitás iniciar sesión',
+          'Para registrar una visita necesitás tener una cuenta.',
+          [
+            {
+              text: 'Cancelar',
+              style: 'cancel',
+            },
+            {
+              text: 'Iniciar sesión',
+              onPress: () => router.push('/login'),
+            },
+          ]
+        );
+
+        return;
+      }
+
+      if (visitaRegistrada) {
+        Alert.alert(
+          'Visita ya registrada',
+          'Ya registraste tu visita a este lugar.'
+        );
+
+        return;
+      }
+
+      setMostrarOpcionesVisita(true);
+    } catch (error) {
+      console.error(
+        '❌ Error al comprobar la sesión:',
+        error
       );
 
-      return;
-    }
-
-    if (visitaRegistrada) {
       Alert.alert(
-        'Visita ya registrada',
-        'Ya registraste tu visita a este lugar.'
+        'No se pudo comprobar la sesión',
+        'Intentá nuevamente en unos segundos.'
       );
-
-      return;
     }
-
-    setMostrarOpcionesVisita(true);
   };
 
   // --------------------------------------------------
@@ -269,8 +430,7 @@ export default function LugarDetalleScreen() {
       // OBTENER USUARIO ACTUAL
       // ----------------------------------------------
 
-      const usuario =
-        await obtenerUsuarioActual();
+      const usuario = await obtenerUsuarioActual();
 
       if (!usuario) {
         Alert.alert(
@@ -312,17 +472,12 @@ export default function LugarDetalleScreen() {
         latUsuario = lugar.latitud;
         lonUsuario = lugar.longitud;
 
-        console.log(
-          '🧪 MODO PRUEBA GPS ACTIVADO'
-        );
+        console.log('🧪 MODO PRUEBA GPS ACTIVADO');
 
-        console.log(
-          '📍 Ubicación simulada:',
-          {
-            latitud: latUsuario,
-            longitud: lonUsuario,
-          }
-        );
+        console.log('📍 Ubicación simulada:', {
+          latitud: latUsuario,
+          longitud: lonUsuario,
+        });
       } else {
         // --------------------------------------------
         // GPS REAL
@@ -333,19 +488,13 @@ export default function LugarDetalleScreen() {
             accuracy: Location.Accuracy.High,
           });
 
-        latUsuario =
-          ubicacion.coords.latitude;
+        latUsuario = ubicacion.coords.latitude;
+        lonUsuario = ubicacion.coords.longitude;
 
-        lonUsuario =
-          ubicacion.coords.longitude;
-
-        console.log(
-          '📍 GPS REAL:',
-          {
-            latitud: latUsuario,
-            longitud: lonUsuario,
-          }
-        );
+        console.log('📍 GPS REAL:', {
+          latitud: latUsuario,
+          longitud: lonUsuario,
+        });
       }
 
       // ----------------------------------------------
@@ -353,26 +502,18 @@ export default function LugarDetalleScreen() {
       // ----------------------------------------------
 
       const diferenciaLatitud =
-        ((lugar.latitud - latUsuario) *
-          Math.PI) /
-        180;
+        ((lugar.latitud - latUsuario) * Math.PI) / 180;
 
       const diferenciaLongitud =
-        ((lugar.longitud - lonUsuario) *
-          Math.PI) /
-        180;
+        ((lugar.longitud - lonUsuario) * Math.PI) / 180;
 
       const radioTierra = 6371000;
 
       const a =
         Math.sin(diferenciaLatitud / 2) *
         Math.sin(diferenciaLatitud / 2) +
-        Math.cos(
-          (latUsuario * Math.PI) / 180
-        ) *
-        Math.cos(
-          (lugar.latitud * Math.PI) / 180
-        ) *
+        Math.cos((latUsuario * Math.PI) / 180) *
+        Math.cos((lugar.latitud * Math.PI) / 180) *
         Math.sin(diferenciaLongitud / 2) *
         Math.sin(diferenciaLongitud / 2);
 
@@ -383,24 +524,17 @@ export default function LugarDetalleScreen() {
           Math.sqrt(1 - a)
         );
 
-      const distanciaMetros =
-        radioTierra * c;
+      const distanciaMetros = radioTierra * c;
 
-      console.log(
-        '📍 UBICACIÓN USUARIO:',
-        {
-          latitud: latUsuario,
-          longitud: lonUsuario,
-        }
-      );
+      console.log('📍 UBICACIÓN USUARIO:', {
+        latitud: latUsuario,
+        longitud: lonUsuario,
+      });
 
-      console.log(
-        '📍 UBICACIÓN LUGAR:',
-        {
-          latitud: lugar.latitud,
-          longitud: lugar.longitud,
-        }
-      );
+      console.log('📍 UBICACIÓN LUGAR:', {
+        latitud: lugar.latitud,
+        longitud: lugar.longitud,
+      });
 
       console.log(
         '📏 DISTANCIA:',
@@ -429,8 +563,7 @@ export default function LugarDetalleScreen() {
         id: `vis-${Date.now()}`,
         usuarioId: usuario.id,
         lugarId: lugar.id,
-        fechaHora:
-          new Date().toISOString(),
+        fechaHora: new Date().toISOString(),
         origen: 'gps',
         fotoUri: null,
         nota: null,
@@ -441,7 +574,7 @@ export default function LugarDetalleScreen() {
       // GUARDAR EN SQLITE
       // ----------------------------------------------
 
-      guardarVisita(nuevaVisita);
+      await guardarVisita(nuevaVisita);
 
       console.log(
         '✅ VISITA GPS GUARDADA:',
@@ -483,29 +616,32 @@ export default function LugarDetalleScreen() {
           'Ubicación necesaria',
           'Necesitamos tu ubicación para calcular la ruta hasta este lugar.'
         );
-
         return;
       }
 
-      const ubicacion =
-        await Location.getCurrentPositionAsync({
-          accuracy:
-            Location.Accuracy.Balanced,
-        });
+      const ubicacion = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
 
-      const origenLat =
-        ubicacion.coords.latitude;
+      const origenLat = ubicacion.coords.latitude;
+      const origenLon = ubicacion.coords.longitude;
 
-      const origenLon =
-        ubicacion.coords.longitude;
+      const destino = encodeURIComponent(
+        `${lugar.nombre}, ${lugar.direccion}, Colón, Entre Ríos, Argentina`
+      );
 
       const url =
         `https://www.google.com/maps/dir/?api=1` +
         `&origin=${origenLat},${origenLon}` +
-        `&destination=${lugar.latitud},${lugar.longitud}`;
+        `&destination=${destino}` +
+        `&destination_place_id=` +
+        `&travelmode=driving`;
 
       await Linking.openURL(url);
+
     } catch (error) {
+      console.error('Error al abrir la ruta:', error);
+
       Alert.alert(
         'No se pudo obtener la ubicación',
         'Intentá nuevamente en unos segundos.'
@@ -520,16 +656,47 @@ export default function LugarDetalleScreen() {
   const llamar = () => {
     if (!lugar?.telefono) return;
 
-    Linking.openURL(
-      `tel:${lugar.telefono}`
-    );
+    Linking.openURL(`tel:${lugar.telefono}`).catch(() => {
+      Alert.alert(
+        'No se pudo realizar la llamada',
+        'Revisá el número de teléfono e intentá nuevamente.'
+      );
+    });
   };
 
   const abrirWeb = () => {
     if (!lugar?.web) return;
 
-    Linking.openURL(lugar.web);
+    Linking.openURL(lugar.web).catch(() => {
+      Alert.alert(
+        'No se pudo abrir el sitio web',
+        'Intentá nuevamente en unos segundos.'
+      );
+    });
   };
+
+  // --------------------------------------------------
+  // CARGANDO LUGAR
+  // --------------------------------------------------
+
+  if (!lugar && cargandoLugar) {
+    return (
+      <View style={styles.screen}>
+        <SafeAreaView style={styles.container}>
+          <View style={styles.errorContainer}>
+            <ActivityIndicator
+              size="large"
+              color="#2F7F8F"
+            />
+
+            <Text style={styles.loadingText}>
+              Cargando información del lugar...
+            </Text>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   // --------------------------------------------------
   // LUGAR NO ENCONTRADO
@@ -540,17 +707,14 @@ export default function LugarDetalleScreen() {
       <View style={styles.screen}>
         <SafeAreaView style={styles.container}>
           <View style={styles.errorContainer}>
-            <Text style={styles.errorIcon}>
-              📍
-            </Text>
+            <Text style={styles.errorIcon}>📍</Text>
 
             <Text style={styles.errorTitle}>
               Lugar no encontrado
             </Text>
 
             <Text style={styles.errorText}>
-              No pudimos encontrar la información
-              de este lugar.
+              No pudimos encontrar la información de este lugar.
             </Text>
 
             <Pressable
@@ -567,14 +731,16 @@ export default function LugarDetalleScreen() {
     );
   }
 
+  // --------------------------------------------------
+  // DETALLE DEL LUGAR
+  // --------------------------------------------------
+
   return (
     <View style={styles.screen}>
       <SafeAreaView style={styles.container}>
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={
-            styles.scrollContent
-          }
+          contentContainerStyle={styles.scrollContent}
         >
           {/* Encabezado */}
 
@@ -583,9 +749,7 @@ export default function LugarDetalleScreen() {
               style={styles.backButton}
               onPress={() => router.back()}
             >
-              <Text style={styles.backIcon}>
-                ‹
-              </Text>
+              <Text style={styles.backIcon}>‹</Text>
             </Pressable>
 
             <Text style={styles.headerTitle}>
@@ -595,8 +759,7 @@ export default function LugarDetalleScreen() {
             <Pressable
               style={[
                 styles.favoriteButton,
-                favorito &&
-                styles.favoriteButtonActive,
+                favorito && styles.favoriteButtonActive,
               ]}
               onPress={manejarFavorito}
               disabled={cargandoFavorito}
@@ -604,8 +767,7 @@ export default function LugarDetalleScreen() {
               <Text
                 style={[
                   styles.favoriteIcon,
-                  favorito &&
-                  styles.favoriteIconActive,
+                  favorito && styles.favoriteIconActive,
                 ]}
               >
                 {favorito ? '♥' : '♡'}
@@ -653,9 +815,7 @@ export default function LugarDetalleScreen() {
 
           <View style={styles.infoCard}>
             <View style={styles.infoRow}>
-              <Text style={styles.infoIcon}>
-                📍
-              </Text>
+              <Text style={styles.infoIcon}>📍</Text>
 
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>
@@ -671,9 +831,7 @@ export default function LugarDetalleScreen() {
             <View style={styles.separator} />
 
             <View style={styles.infoRow}>
-              <Text style={styles.infoIcon}>
-                🕐
-              </Text>
+              <Text style={styles.infoIcon}>🕐</Text>
 
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>
@@ -689,9 +847,7 @@ export default function LugarDetalleScreen() {
             <View style={styles.separator} />
 
             <View style={styles.infoRow}>
-              <Text style={styles.infoIcon}>
-                💰
-              </Text>
+              <Text style={styles.infoIcon}>💰</Text>
 
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>
@@ -712,15 +868,11 @@ export default function LugarDetalleScreen() {
               style={styles.primaryButton}
               onPress={abrirRuta}
             >
-              <Text
-                style={styles.primaryButtonIcon}
-              >
+              <Text style={styles.primaryButtonIcon}>
                 🧭
               </Text>
 
-              <Text
-                style={styles.primaryButtonText}
-              >
+              <Text style={styles.primaryButtonText}>
                 Cómo llegar
               </Text>
             </Pressable>
@@ -729,51 +881,31 @@ export default function LugarDetalleScreen() {
               style={styles.secondaryButton}
               onPress={alternarAudio}
             >
-              <Text
-                style={styles.secondaryButtonIcon}
-              >
-                {audioStatus.playing
-                  ? '⏸️'
-                  : '🎧'}
+              <Text style={styles.secondaryButtonIcon}>
+                {audioStatus.playing ? '⏸️' : '🎧'}
               </Text>
 
-              <Text
-                style={styles.secondaryButtonText}
-              >
-                {audioStatus.playing
-                  ? 'Pausar'
-                  : 'Audioguía'}
+              <Text style={styles.secondaryButtonText}>
+                {audioStatus.playing ? 'Pausar' : 'Audioguía'}
               </Text>
             </Pressable>
           </View>
 
           {/* Transcripción */}
 
-          {lugar.transcripcion && (
+          {transcripcionParaMostrar && (
             <>
               <Pressable
-                style={
-                  styles.transcriptionButton
-                }
+                style={styles.transcriptionButton}
                 onPress={() =>
-                  setMostrarTranscripcion(
-                    !mostrarTranscripcion
-                  )
+                  setMostrarTranscripcion(!mostrarTranscripcion)
                 }
               >
-                <Text
-                  style={
-                    styles.transcriptionButtonIcon
-                  }
-                >
+                <Text style={styles.transcriptionButtonIcon}>
                   📄
                 </Text>
 
-                <Text
-                  style={
-                    styles.transcriptionButtonText
-                  }
-                >
+                <Text style={styles.transcriptionButtonText}>
                   {mostrarTranscripcion
                     ? 'Ocultar transcripción'
                     : 'Ver transcripción'}
@@ -781,25 +913,13 @@ export default function LugarDetalleScreen() {
               </Pressable>
 
               {mostrarTranscripcion && (
-                <View
-                  style={
-                    styles.transcriptionCard
-                  }
-                >
-                  <Text
-                    style={
-                      styles.transcriptionTitle
-                    }
-                  >
+                <View style={styles.transcriptionCard}>
+                  <Text style={styles.transcriptionTitle}>
                     Transcripción de la audioguía
                   </Text>
 
-                  <Text
-                    style={
-                      styles.transcriptionText
-                    }
-                  >
-                    {lugar.transcripcion}
+                  <Text style={styles.transcriptionText}>
+                    {transcripcionParaMostrar}
                   </Text>
                 </View>
               )}
@@ -813,9 +933,7 @@ export default function LugarDetalleScreen() {
             onPress={abrirRegistroDeVisita}
           >
             <Text style={styles.visitButtonIcon}>
-              {visitaRegistrada
-                ? '✓'
-                : '📍'}
+              {visitaRegistrada ? '✓' : '📍'}
             </Text>
 
             <Text style={styles.visitButtonText}>
@@ -828,14 +946,10 @@ export default function LugarDetalleScreen() {
           {/* Selector de método de visita */}
 
           <Modal
-            visible={
-              mostrarOpcionesVisita
-            }
+            visible={mostrarOpcionesVisita}
             transparent
             animationType="slide"
-            onRequestClose={() =>
-              setMostrarOpcionesVisita(false)
-            }
+            onRequestClose={() => setMostrarOpcionesVisita(false)}
           >
             <View style={styles.modalOverlay}>
               <View style={styles.modalCard}>
@@ -852,47 +966,27 @@ export default function LugarDetalleScreen() {
                 <Pressable
                   style={styles.visitOption}
                   onPress={() => {
-                    setMostrarOpcionesVisita(
-                      false
-                    );
+                    setMostrarOpcionesVisita(false);
 
                     router.push({
-                      pathname:
-                        '/escanear-qr',
+                      pathname: '/escanear-qr',
                       params: {
                         lugarId: lugar.id,
                       },
                     });
                   }}
                 >
-                  <Text
-                    style={
-                      styles.visitOptionIcon
-                    }
-                  >
+                  <Text style={styles.visitOptionIcon}>
                     📷
                   </Text>
 
-                  <View
-                    style={
-                      styles.visitOptionContent
-                    }
-                  >
-                    <Text
-                      style={
-                        styles.visitOptionTitle
-                      }
-                    >
+                  <View style={styles.visitOptionContent}>
+                    <Text style={styles.visitOptionTitle}>
                       Escanear código QR
                     </Text>
 
-                    <Text
-                      style={
-                        styles.visitOptionText
-                      }
-                    >
-                      Escaneá el código que se encuentra
-                      en el lugar.
+                    <Text style={styles.visitOptionText}>
+                      Escaneá el código que se encuentra en el lugar.
                     </Text>
                   </View>
                 </Pressable>
@@ -902,39 +996,20 @@ export default function LugarDetalleScreen() {
                 <Pressable
                   style={styles.visitOption}
                   onPress={() => {
-                    setMostrarOpcionesVisita(
-                      false
-                    );
-
+                    setMostrarOpcionesVisita(false);
                     registrarVisita();
                   }}
                 >
-                  <Text
-                    style={
-                      styles.visitOptionIcon
-                    }
-                  >
+                  <Text style={styles.visitOptionIcon}>
                     📍
                   </Text>
 
-                  <View
-                    style={
-                      styles.visitOptionContent
-                    }
-                  >
-                    <Text
-                      style={
-                        styles.visitOptionTitle
-                      }
-                    >
+                  <View style={styles.visitOptionContent}>
+                    <Text style={styles.visitOptionTitle}>
                       Estoy en este lugar
                     </Text>
 
-                    <Text
-                      style={
-                        styles.visitOptionText
-                      }
-                    >
+                    <Text style={styles.visitOptionText}>
                       Comprobar tu ubicación mediante GPS.
                     </Text>
                   </View>
@@ -945,9 +1020,7 @@ export default function LugarDetalleScreen() {
                 <Pressable
                   style={styles.visitOption}
                   onPress={() => {
-                    setMostrarOpcionesVisita(
-                      false
-                    );
+                    setMostrarOpcionesVisita(false);
 
                     Alert.alert(
                       'Registro manual',
@@ -955,34 +1028,17 @@ export default function LugarDetalleScreen() {
                     );
                   }}
                 >
-                  <Text
-                    style={
-                      styles.visitOptionIcon
-                    }
-                  >
+                  <Text style={styles.visitOptionIcon}>
                     ✏️
                   </Text>
 
-                  <View
-                    style={
-                      styles.visitOptionContent
-                    }
-                  >
-                    <Text
-                      style={
-                        styles.visitOptionTitle
-                      }
-                    >
+                  <View style={styles.visitOptionContent}>
+                    <Text style={styles.visitOptionTitle}>
                       Registrar manualmente
                     </Text>
 
-                    <Text
-                      style={
-                        styles.visitOptionText
-                      }
-                    >
-                      Elegí esta opción si querés registrar
-                      la visita manualmente.
+                    <Text style={styles.visitOptionText}>
+                      Elegí esta opción si querés registrar la visita manualmente.
                     </Text>
                   </View>
                 </Pressable>
@@ -990,20 +1046,10 @@ export default function LugarDetalleScreen() {
                 {/* Cancelar */}
 
                 <Pressable
-                  style={
-                    styles.modalCancelButton
-                  }
-                  onPress={() =>
-                    setMostrarOpcionesVisita(
-                      false
-                    )
-                  }
+                  style={styles.modalCancelButton}
+                  onPress={() => setMostrarOpcionesVisita(false)}
                 >
-                  <Text
-                    style={
-                      styles.modalCancelText
-                    }
-                  >
+                  <Text style={styles.modalCancelText}>
                     Cancelar
                   </Text>
                 </Pressable>
@@ -1018,32 +1064,16 @@ export default function LugarDetalleScreen() {
               style={styles.contactButton}
               onPress={llamar}
             >
-              <Text
-                style={
-                  styles.contactButtonIcon
-                }
-              >
+              <Text style={styles.contactButtonIcon}>
                 📞
               </Text>
 
-              <View
-                style={
-                  styles.contactButtonContent
-                }
-              >
-                <Text
-                  style={
-                    styles.contactButtonLabel
-                  }
-                >
+              <View style={styles.contactButtonContent}>
+                <Text style={styles.contactButtonLabel}>
                   Teléfono
                 </Text>
 
-                <Text
-                  style={
-                    styles.contactButtonText
-                  }
-                >
+                <Text style={styles.contactButtonText}>
                   {lugar.telefono}
                 </Text>
               </View>
@@ -1057,32 +1087,16 @@ export default function LugarDetalleScreen() {
               style={styles.contactButton}
               onPress={abrirWeb}
             >
-              <Text
-                style={
-                  styles.contactButtonIcon
-                }
-              >
+              <Text style={styles.contactButtonIcon}>
                 🌐
               </Text>
 
-              <View
-                style={
-                  styles.contactButtonContent
-                }
-              >
-                <Text
-                  style={
-                    styles.contactButtonLabel
-                  }
-                >
+              <View style={styles.contactButtonContent}>
+                <Text style={styles.contactButtonLabel}>
                   Sitio web
                 </Text>
 
-                <Text
-                  style={
-                    styles.contactButtonText
-                  }
-                >
+                <Text style={styles.contactButtonText}>
                   Visitar sitio oficial
                 </Text>
               </View>
@@ -1525,6 +1539,17 @@ const styles = StyleSheet.create({
     color: '#30352F',
     fontWeight: '700',
     marginTop: 2,
+  },
+
+  // ------------------------------------------
+  // Cargando
+  // ------------------------------------------
+
+  loadingText: {
+    fontSize: 15,
+    color: '#5F5C55',
+    marginTop: 14,
+    textAlign: 'center',
   },
 
   // ------------------------------------------

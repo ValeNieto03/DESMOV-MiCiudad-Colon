@@ -1,0 +1,37 @@
+
+# API Mi Ciudad con SQLite y archivos persistentes
+
+name: api-mi-ciudad
+
+services:
+  api:
+    build: .
+
+    ports:
+      - "${PUERTO:-3000}:3000"
+
+    environment:
+      PUERTO: "3000"
+
+      DB_MOTOR: better-sqlite3
+      DB_ARCHIVO: /app/datos/api.sqlite
+      DB_SINCRONIZAR: "true"
+
+      # La base inicial ya viene incluida en la imagen.
+      # Evitamos sembrar nuevamente los audios de demostracion.
+      SEMBRAR_SI_VACIA: "false"
+
+      JWT_SECRETO: ${JWT_SECRETO:-solo-para-desarrollo-no-usar-en-produccion}
+
+      DIRECTORIO_ARCHIVOS: /app/archivos
+
+      NOTIFICACIONES: expo
+      SIMULACION_HABILITADA: "true"
+
+      URL_PUBLICA: ${URL_PUBLICA:-}
+
+    volumes:
+      - ./datos:/app/datos
+      - ./archivos:/app/archivos
+
+    restart: unless-stopped

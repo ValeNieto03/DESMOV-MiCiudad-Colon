@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
@@ -6,12 +7,19 @@ import {
   Text,
   View,
 } from 'react-native';
+import MapView, {
+  Marker,
+  PROVIDER_GOOGLE,
+  type Region,
+} from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { WebView } from 'react-native-webview';
 import { useRouter } from 'expo-router';
 
 import { lugares } from '@/data/lugares';
 import { inicializarBaseDeDatos } from '@/servicios/visitas';
+import { obtenerLugaresIntegrados } from '@/servicios/lugares-integrados';
+
+import type { Place } from '@/data/lugares';
 
 function calcularDistanciaKm(
   lat1: number,
@@ -25,15 +33,12 @@ function calcularDistanciaKm(
   const diferenciaLongitud = ((lon2 - lon1) * Math.PI) / 180;
 
   const a =
-    Math.sin(diferenciaLatitud / 2) *
-    Math.sin(diferenciaLatitud / 2) +
+    Math.sin(diferenciaLatitud / 2) ** 2 +
     Math.cos((lat1 * Math.PI) / 180) *
     Math.cos((lat2 * Math.PI) / 180) *
-    Math.sin(diferenciaLongitud / 2) *
-    Math.sin(diferenciaLongitud / 2);
+    Math.sin(diferenciaLongitud / 2) ** 2;
 
-  const c =
-    2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
   return radioTierra * c;
 }
@@ -46,20 +51,32 @@ function formatearDistancia(distanciaKm: number) {
   return `${distanciaKm.toFixed(1).replace('.', ',')} km`;
 }
 
+const REGION_INICIAL: Region = {
+  latitude: -32.22477,
+  longitude: -58.14261,
+  latitudeDelta: 0.025,
+  longitudeDelta: 0.025,
+};
+
 export default function HomeScreen() {
   const router = useRouter();
+  const mapRef = useRef<MapView>(null);
 
   const [selectedPlaceId, setSelectedPlaceId] =
     useState('centro-colon');
 
-  const [scrollEnabled, setScrollEnabled] = useState(true);
+  // La aplicación comienza con los datos locales.
+  // Cuando la API responde, actualiza la lista.
+  const [lugaresDisponibles, setLugaresDisponibles] =
+    useState<Place[]>(lugares);
 
   const selectedPlace =
-    lugares.find((lugar) => lugar.id === selectedPlaceId) ??
-    lugares[0];
+    lugaresDisponibles.find(
+      (lugar) => lugar.id === selectedPlaceId
+    ) ?? lugaresDisponibles[0] ?? lugares[0];
 
   const lugaresCercanos = useMemo(() => {
-    return lugares
+    return lugaresDisponibles
       .filter((lugar) => lugar.id !== selectedPlace.id)
       .map((lugar) => ({
         ...lugar,
@@ -71,49 +88,68 @@ export default function HomeScreen() {
         ),
       }))
       .sort((a, b) => a.distancia - b.distancia);
-  }, [selectedPlace]);
+  }, [lugaresDisponibles, selectedPlace]);
 
-  const webViewRef = useRef<WebView>(null);
-
+  // Inicialización de la base de datos local.
   useEffect(() => {
     try {
       inicializarBaseDeDatos();
-
-      console.log(
-        'Base de datos inicializada correctamente'
-      );
+      console.log('Base de datos inicializada correctamente');
     } catch (error) {
-      console.error(
-        'Error al inicializar la base de datos:',
-        error
-      );
+      console.error('Error al inicializar la base de datos:', error);
     }
   }, []);
 
+  // Carga los lugares de la API sin impedir que la pantalla abra.
   useEffect(() => {
-    webViewRef.current?.injectJavaScript(`
-      if (window.focusSelectedPlace) {
-        window.focusSelectedPlace(
-          ${selectedPlace.latitud},
-          ${selectedPlace.longitud},
-          '${selectedPlace.id}'
+    let activo = true;
+
+    async function cargarLugares() {
+      try {
+        const resultado = await obtenerLugaresIntegrados();
+
+        if (activo && resultado.length > 0) {
+          setLugaresDisponibles(resultado);
+          console.log(
+            `Lugares cargados correctamente: ${resultado.length}`
+          );
+        }
+      } catch (error) {
+        console.error(
+          'No se pudieron cargar los lugares. Se mantienen los datos locales.',
+          error
         );
       }
-      true;
-    `);
+    }
+
+    cargarLugares();
+
+    return () => {
+      activo = false;
+    };
+  }, []);
+
+  // Centra el mapa en el lugar seleccionado.
+  useEffect(() => {
+    mapRef.current?.animateToRegion(
+      {
+        latitude: selectedPlace.latitud,
+        longitude: selectedPlace.longitud,
+        latitudeDelta: 0.012,
+        longitudeDelta: 0.012,
+      },
+      450
+    );
   }, [selectedPlace]);
 
   return (
     <View style={styles.screen}>
       <SafeAreaView style={styles.container}>
-
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
-          scrollEnabled={scrollEnabled}
-          nestedScrollEnabled={true}
+          nestedScrollEnabled
         >
-
           {/* Encabezado */}
           <View style={styles.header}>
             <View>
@@ -121,9 +157,7 @@ export default function HomeScreen() {
                 GUÍA TURÍSTICA
               </Text>
 
-              <Text style={styles.title}>
-                Colón
-              </Text>
+              <Text style={styles.title}>Colón</Text>
 
               <Text style={styles.subtitle}>
                 Descubrí todo lo que esta ciudad tiene para vos
@@ -134,9 +168,7 @@ export default function HomeScreen() {
               style={styles.profileButton}
               onPress={() => router.push('/yo')}
             >
-              <Text style={styles.profileIcon}>
-                👤
-              </Text>
+              <Text style={styles.profileIcon}>👤</Text>
             </Pressable>
           </View>
 
@@ -145,196 +177,59 @@ export default function HomeScreen() {
             style={styles.search}
             onPress={() => router.push('/lugares')}
           >
-            <Text style={styles.searchIcon}>
-              ⌕
-            </Text>
+            <Text style={styles.searchIcon}>⌕</Text>
 
             <Text style={styles.searchText}>
               ¿Qué querés conocer?
             </Text>
           </Pressable>
 
-          {/* Mapa */}
+          {/* Google Maps */}
           <View style={styles.mapCard}>
-            <WebView
-              ref={webViewRef}
-              originWhitelist={['*']}
-              nestedScrollEnabled={true}
-              onTouchStart={() => setScrollEnabled(false)}
-              onTouchEnd={() => setScrollEnabled(true)}
-              onTouchCancel={() => setScrollEnabled(true)}
-              onMessage={(event) => {
-                const placeId = event.nativeEvent.data;
-
-                setSelectedPlaceId(placeId);
-              }}
-              source={{
-                html: `
-                  <!DOCTYPE html>
-
-                  <html>
-                    <head>
-                      <meta
-                        name="viewport"
-                        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-                      />
-
-                      <link
-                        rel="stylesheet"
-                        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-                      />
-
-                      <style>
-                        html,
-                        body,
-                        #map {
-                          height: 100%;
-                          width: 100%;
-                          margin: 0;
-                          padding: 0;
-                        }
-
-                        .lugar-label {
-                          background: white;
-                          color: #253A32;
-                          border: 1px solid #D8E4E2;
-                          border-radius: 8px;
-                          padding: 4px 8px;
-                          font-size: 12px;
-                          font-weight: 700;
-                          white-space: nowrap;
-                          box-shadow: 0 2px 6px rgba(0,0,0,0.20);
-                        }
-                      </style>
-                    </head>
-
-                    <body>
-                      <div id="map"></div>
-
-                      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-                      <script>
-                        const map = L.map('map').setView(
-                          [-32.22477, -58.14261],
-                          14
-                        );
-
-                        const marcadores = {};
-
-                        function crearIconoSeleccionado(nombre) {
-                          return L.divIcon({
-                            className: '',
-                            html: \`
-                              <div style="
-                                display: flex;
-                                align-items: center;
-                                gap: 6px;
-                                transform: translateY(-2px);
-                              ">
-                                <div style="
-                                  width: 24px;
-                                  height: 24px;
-                                  background: #2F7F8F;
-                                  border: 4px solid white;
-                                  border-radius: 50%;
-                                  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
-                                  flex-shrink: 0;
-                                "></div>
-
-                                <div class="lugar-label">
-                                  \${nombre}
-                                </div>
-                              </div>
-                            \`,
-                            iconSize: [180, 32],
-                            iconAnchor: [12, 16],
-                          });
-                        }
-
-                        function crearIconoNormal() {
-                          return L.divIcon({
-                            className: '',
-                            html: \`
-                              <div style="
-                                width: 16px;
-                                height: 16px;
-                                background: #6B8E5A;
-                                border: 3px solid white;
-                                border-radius: 50%;
-                                box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-                              "></div>
-                            \`,
-                            iconSize: [16, 16],
-                            iconAnchor: [8, 8],
-                          });
-                        }
-
-                        function actualizarMarcadorSeleccionado(idSeleccionado) {
-                          lugares.forEach(function(lugar) {
-                            if (marcadores[lugar.id]) {
-                              marcadores[lugar.id].setIcon(
-                                lugar.id === idSeleccionado
-                                  ? crearIconoSeleccionado(lugar.nombre)
-                                  : crearIconoNormal()
-                              );
-                            }
-                          });
-                        }
-
-                        window.focusSelectedPlace = function(lat, lon, id) {
-                          map.setView([lat, lon], 14);
-
-                          actualizarMarcadorSeleccionado(id);
-                        };
-
-                        L.tileLayer(
-                          'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                          {
-                            attribution: '&copy; OpenStreetMap contributors'
-                          }
-                        ).addTo(map);
-
-                        const lugares = ${JSON.stringify(
-                  lugares.map((lugar) => ({
-                    id: lugar.id,
-                    nombre: lugar.nombre,
-                    latitud: lugar.latitud,
-                    longitud: lugar.longitud,
-                  }))
-                )};
-
-                        lugares.forEach(function(lugar) {
-                          const marcador = L.marker(
-                            [
-                              lugar.latitud,
-                              lugar.longitud
-                            ],
-                            {
-                              icon: crearIconoNormal()
-                            }
-                          )
-                            .addTo(map)
-                            .bindPopup(
-                              '<b>' + lugar.nombre + '</b>'
-                            );
-
-                          marcadores[lugar.id] = marcador;
-
-                          marcador.on('click', function() {
-                            window.ReactNativeWebView.postMessage(
-                              lugar.id
-                            );
-                          });
-                        });
-
-                        actualizarMarcadorSeleccionado('centro-colon');
-                      </script>
-                    </body>
-                  </html>
-                `,
-              }}
+            <MapView
+              ref={mapRef}
+              provider={PROVIDER_GOOGLE}
               style={styles.map}
-            />
+              initialRegion={REGION_INICIAL}
+              showsCompass
+              showsScale
+              toolbarEnabled={false}
+              loadingEnabled
+            >
+              {lugaresDisponibles.map((lugar) => {
+                const seleccionado =
+                  lugar.id === selectedPlaceId;
+
+                return (
+                  <Marker
+                    key={lugar.id}
+                    coordinate={{
+                      latitude: lugar.latitud,
+                      longitude: lugar.longitud,
+                    }}
+                    title={lugar.nombre}
+                    description={lugar.categoria}
+                    onPress={() => {
+                      setSelectedPlaceId(lugar.id);
+                    }}
+                    zIndex={seleccionado ? 2 : 1}
+                  >
+                    <View
+                      style={[
+                        styles.marker,
+                        seleccionado
+                          ? styles.markerSelected
+                          : styles.markerNormal,
+                      ]}
+                    >
+                      {seleccionado && (
+                        <View style={styles.markerDot} />
+                      )}
+                    </View>
+                  </Marker>
+                );
+              })}
+            </MapView>
           </View>
 
           {/* Lugares cercanos */}
@@ -348,13 +243,11 @@ export default function HomeScreen() {
             <Pressable
               onPress={() => router.push('/lugares')}
             >
-              <Text style={styles.seeMore}>
-                Ver todos
-              </Text>
+              <Text style={styles.seeMore}>Ver todos</Text>
             </Pressable>
           </View>
 
-          {/* Cards */}
+          {/* Tarjetas */}
           <View style={styles.cardsContainer}>
             {lugaresCercanos.slice(0, 3).map((lugar) => (
               <Pressable
@@ -384,28 +277,21 @@ export default function HomeScreen() {
                   </Text>
                 </View>
 
-                {/* Flecha: abre el detalle */}
                 <Pressable
                   onPress={() =>
                     router.push({
                       pathname: '/lugar-detalle',
-                      params: {
-                        id: lugar.id,
-                      },
+                      params: { id: lugar.id },
                     })
                   }
                   hitSlop={10}
                 >
-                  <Text style={styles.arrow}>
-                    ›
-                  </Text>
+                  <Text style={styles.arrow}>›</Text>
                 </Pressable>
               </Pressable>
             ))}
           </View>
-
         </ScrollView>
-
       </SafeAreaView>
     </View>
   );
@@ -500,6 +386,35 @@ const styles = StyleSheet.create({
 
   map: {
     flex: 1,
+  },
+
+  marker: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  markerNormal: {
+    backgroundColor: '#6B8E5A',
+  },
+
+  markerSelected: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#2F7F8F',
+    borderWidth: 4,
+  },
+
+  markerDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFFFFF',
   },
 
   sectionHeader: {

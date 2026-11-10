@@ -1,3 +1,4 @@
+
 import {
   Pressable,
   ScrollView,
@@ -8,30 +9,74 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { lugares } from '@/data/lugares';
+import type { Place } from '@/data/lugares';
+import { obtenerLugaresIntegrados } from '@/servicios/lugares-integrados';
 
 export default function LugaresScreen() {
   const [busqueda, setBusqueda] = useState('');
-  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState('Todos');
+  const [categoriaSeleccionada, setCategoriaSeleccionada] =
+    useState('Todos');
+  const [lugaresDisponibles, setLugaresDisponibles] =
+    useState<Place[]>(lugares);
+  const [cargando, setCargando] = useState(true);
 
   const router = useRouter();
 
+  useEffect(() => {
+    let activo = true;
+
+    async function cargarLugares() {
+      try {
+        const resultado = await obtenerLugaresIntegrados();
+
+        if (activo) {
+          setLugaresDisponibles(resultado);
+        }
+      } catch (error) {
+        console.warn('No se pudieron cargar los lugares:', error);
+
+        if (activo) {
+          setLugaresDisponibles(lugares);
+        }
+      } finally {
+        if (activo) {
+          setCargando(false);
+        }
+      }
+    }
+
+    cargarLugares();
+
+    return () => {
+      activo = false;
+    };
+  }, []);
+
+  // Creamos las categorías a partir de los lugares disponibles.
+  // Así también aparecen las categorías nuevas que llegan desde la API.
   const categorias = [
     'Todos',
-    'Centro',
-    'Termas',
-    'Naturaleza',
-    'Playa',
-    'Río y paseo',
-    'Patrimonio',
+    ...Array.from(
+      new Set(
+        lugaresDisponibles
+          .map((lugar) => lugar.categoria)
+          .filter((categoria) => categoria.trim().length > 0)
+          .sort((a, b) => a.localeCompare(b, 'es')),
+      ),
+    ),
   ];
 
-  const lugaresFiltrados = lugares.filter((lugar) => {
+  const lugaresFiltrados = lugaresDisponibles.filter((lugar) => {
+    const textoBusqueda = busqueda.trim().toLowerCase();
+
     const coincideBusqueda =
-      lugar.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-      lugar.descripcion.toLowerCase().includes(busqueda.toLowerCase());
+      lugar.nombre.toLowerCase().includes(textoBusqueda) ||
+      lugar.descripcion.toLowerCase().includes(textoBusqueda) ||
+      lugar.categoria.toLowerCase().includes(textoBusqueda) ||
+      lugar.direccion.toLowerCase().includes(textoBusqueda);
 
     const coincideCategoria =
       categoriaSeleccionada === 'Todos' ||
@@ -48,18 +93,16 @@ export default function LugaresScreen() {
           <Pressable
             style={styles.backButton}
             onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Volver"
           >
             <Text style={styles.backIcon}>‹</Text>
           </Pressable>
 
           <View style={styles.headerText}>
-            <Text style={styles.smallTitle}>
-              GUÍA TURÍSTICA
-            </Text>
+            <Text style={styles.smallTitle}>GUÍA TURÍSTICA</Text>
 
-            <Text style={styles.title}>
-              Lugares
-            </Text>
+            <Text style={styles.title}>Lugares</Text>
           </View>
         </View>
 
@@ -77,10 +120,12 @@ export default function LugaresScreen() {
             placeholderTextColor="#99958C"
             value={busqueda}
             onChangeText={setBusqueda}
+            returnKeyType="search"
+            accessibilityLabel="Buscar lugares por nombre, descripción, categoría o dirección"
           />
         </View>
 
-        {/* Categorías */}
+        {/* Categorías dinámicas */}
         <View style={styles.categoriesWrapper}>
           <ScrollView
             horizontal
@@ -98,6 +143,8 @@ export default function LugaresScreen() {
                     activa && styles.categoryButtonActive,
                   ]}
                   onPress={() => setCategoriaSeleccionada(categoria)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: activa }}
                 >
                   <Text
                     style={[
@@ -113,10 +160,21 @@ export default function LugaresScreen() {
           </ScrollView>
         </View>
 
-        {/* Lista */}
+        {/* Cantidad de resultados */}
+        <View style={styles.resultsHeader}>
+          <Text style={styles.resultsText}>
+            {cargando
+              ? 'Actualizando lugares...'
+              : `${lugaresFiltrados.length} ${lugaresFiltrados.length === 1 ? 'lugar' : 'lugares'
+              }`}
+          </Text>
+        </View>
+
+        {/* Lista de lugares */}
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.list}
+          keyboardShouldPersistTaps="handled"
         >
           {lugaresFiltrados.length > 0 ? (
             lugaresFiltrados.map((lugar) => (
@@ -129,6 +187,8 @@ export default function LugaresScreen() {
                     params: { id: lugar.id },
                   })
                 }
+                accessibilityRole="button"
+                accessibilityLabel={`Ver detalles de ${lugar.nombre}`}
               >
                 <View style={styles.placeIcon}>
                   <Text style={styles.placeIconText}>
@@ -145,14 +205,15 @@ export default function LugaresScreen() {
                     {lugar.categoria}
                   </Text>
 
-                  <Text style={styles.placeDescription}>
-                    {lugar.descripcion}
+                  <Text
+                    style={styles.placeDescription}
+                    numberOfLines={3}
+                  >
+                    {lugar.descripcion || 'Descripción no disponible.'}
                   </Text>
                 </View>
 
-                <Text style={styles.arrow}>
-                  ›
-                </Text>
+                <Text style={styles.arrow}>›</Text>
               </Pressable>
             ))
           ) : (
@@ -166,6 +227,21 @@ export default function LugaresScreen() {
               <Text style={styles.emptyText}>
                 Probá con otra búsqueda o seleccioná otra categoría.
               </Text>
+
+              {(busqueda.length > 0 ||
+                categoriaSeleccionada !== 'Todos') && (
+                  <Pressable
+                    style={styles.clearButton}
+                    onPress={() => {
+                      setBusqueda('');
+                      setCategoriaSeleccionada('Todos');
+                    }}
+                  >
+                    <Text style={styles.clearButtonText}>
+                      Limpiar filtros
+                    </Text>
+                  </Pressable>
+                )}
             </View>
           )}
         </ScrollView>
@@ -270,7 +346,7 @@ const styles = StyleSheet.create({
 
   categoryButton: {
     flexShrink: 0,
-    height: 36,
+    minHeight: 36,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#D8D2C4',
@@ -294,6 +370,17 @@ const styles = StyleSheet.create({
 
   categoryTextActive: {
     color: '#FFFFFF',
+  },
+
+  resultsHeader: {
+    marginBottom: 8,
+    paddingHorizontal: 2,
+  },
+
+  resultsText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#77736B',
   },
 
   list: {
@@ -379,5 +466,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     lineHeight: 20,
+  },
+
+  clearButton: {
+    marginTop: 18,
+    backgroundColor: '#253A32',
+    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+  },
+
+  clearButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });
