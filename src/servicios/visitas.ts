@@ -85,11 +85,26 @@ export function actualizarRecuerdosVisita(
   db.runSync(
     `
       UPDATE visitas
-      SET nota = ?, fotoUri = ?
+      SET nota = ?, fotoUri = ?, sincronizada = 0
       WHERE id = ?;
     `,
     nota,
     fotoUri,
+    id
+  );
+}
+
+export function actualizarFotoVisita(id: string, fotoUri: string) {
+  db.runSync(
+    'UPDATE visitas SET fotoUri = ? WHERE id = ?;',
+    fotoUri,
+    id
+  );
+}
+
+export function marcarVisitaSincronizada(id: string) {
+  db.runSync(
+    'UPDATE visitas SET sincronizada = 1 WHERE id = ?;',
     id
   );
 }

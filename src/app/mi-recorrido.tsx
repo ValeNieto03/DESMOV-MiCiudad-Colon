@@ -29,6 +29,7 @@ import {
     obtenerVisitas,
     type Visita,
 } from '@/servicios/visitas';
+import { sincronizarVisita } from '@/servicios/sincronizacion-visitas';
 
 export default function MiRecorridoScreen() {
   const themedStyles = useThemedStyles(styles);
@@ -38,6 +39,7 @@ export default function MiRecorridoScreen() {
     const [notaTemporal, setNotaTemporal] = useState('');
     const [fotoTemporalUri, setFotoTemporalUri] = useState<string | null>(null);
     const [guardandoRecuerdo, setGuardandoRecuerdo] = useState(false);
+    const [sincronizando, setSincronizando] = useState(false);
 
     // ------------------------------------------
     // Cargar visitas del usuario actual
@@ -106,6 +108,45 @@ export default function MiRecorridoScreen() {
         await cargarVisitas();
 
         setActualizando(false);
+    };
+
+    const visitasPendientes = visitas.filter(
+        (visita) => !visita.sincronizada && visita.origen !== 'demo'
+    );
+
+    const sincronizarPendientes = async () => {
+        if (sincronizando || visitasPendientes.length === 0) return;
+
+        setSincronizando(true);
+        let cantidadSincronizada = 0;
+
+        try {
+            for (const visita of visitasPendientes) {
+                try {
+                    await sincronizarVisita(visita);
+                    cantidadSincronizada += 1;
+                } catch (error) {
+                    console.error(
+                        `No se pudo sincronizar la visita ${visita.id}:`,
+                        error
+                    );
+                }
+            }
+
+            await cargarVisitas();
+
+            const pendientesRestantes = visitasPendientes.length - cantidadSincronizada;
+            Alert.alert(
+                pendientesRestantes === 0
+                    ? 'Sincronización completa'
+                    : 'Sincronización parcial',
+                pendientesRestantes === 0
+                    ? `Se sincronizaron ${cantidadSincronizada} visitas.`
+                    : `Se sincronizaron ${cantidadSincronizada} de ${visitasPendientes.length}. Revisá la conexión y volvé a intentar con las pendientes.`
+            );
+        } finally {
+            setSincronizando(false);
+        }
     };
 
     // ------------------------------------------
@@ -460,6 +501,24 @@ export default function MiRecorridoScreen() {
 
             </View>
 
+            {visitasPendientes.length > 0 && (
+                <Pressable
+                    style={themedStyles.syncAction}
+                    onPress={sincronizarPendientes}
+                    disabled={sincronizando}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Sincronizar ${visitasPendientes.length} visitas pendientes`}
+                >
+                    {sincronizando ? (
+                        <ActivityIndicator color="#FFFFFF" />
+                    ) : (
+                        <Text style={themedStyles.syncActionText}>
+                            Sincronizar {visitasPendientes.length} visitas pendientes
+                        </Text>
+                    )}
+                </Pressable>
+            )}
+
             {/* Contenido */}
             {visitas.length === 0 ? (
 
@@ -636,6 +695,22 @@ const styles = StyleSheet.create({
     headerIconText: {
         fontSize: 23,
         color: '#2F7F8F',
+    },
+
+    syncAction: {
+        marginHorizontal: 20,
+        marginBottom: 12,
+        paddingVertical: 13,
+        paddingHorizontal: 16,
+        borderRadius: 10,
+        backgroundColor: '#28745A',
+        alignItems: 'center',
+    },
+
+    syncActionText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '700',
     },
 
     // ------------------------------------------
