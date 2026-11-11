@@ -1,3 +1,4 @@
+import { useThemedStyles } from "@/hooks/use-theme";
 
 import { useEffect, useState } from 'react';
 import {
@@ -18,6 +19,7 @@ import {
 } from '@/servicios/api';
 
 export default function PruebaAPIScreen() {
+  const themedStyles = useThemedStyles(styles);
   const [cargando, setCargando] = useState(false);
   const [resultado, setResultado] = useState('');
   const [lugares, setLugares] = useState<LugarAPI[]>([]);
@@ -58,46 +60,46 @@ export default function PruebaAPIScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Prueba de la API</Text>
+    <SafeAreaView style={themedStyles.container}>
+      <ScrollView contentContainerStyle={themedStyles.content}>
+        <Text style={themedStyles.title}>Prueba de la API</Text>
 
-        <Text style={styles.description}>
+        <Text style={themedStyles.description}>
           Comprobamos la conexión y consultamos las categorías y los lugares
           de Mi Ciudad.
         </Text>
 
         <Pressable
-          style={styles.button}
+          style={themedStyles.button}
           onPress={probarAPI}
           disabled={cargando}
         >
-          <Text style={styles.buttonText}>
+          <Text style={themedStyles.buttonText}>
             {cargando ? 'Consultando...' : 'Volver a probar'}
           </Text>
         </Pressable>
 
         {cargando && <ActivityIndicator size="large" />}
 
-        <View style={styles.resultCard}>
-          <Text style={styles.result}>{resultado}</Text>
+        <View style={themedStyles.resultCard}>
+          <Text style={themedStyles.result}>{resultado}</Text>
         </View>
 
-        <Text style={styles.subtitle}>Lugares recibidos</Text>
+        <Text style={themedStyles.subtitle}>Lugares recibidos</Text>
 
         {lugares.map((lugar) => (
-          <View key={lugar.id} style={styles.placeCard}>
-            <Text style={styles.placeName}>{lugar.nombre}</Text>
-            <Text style={styles.placeDescription}>
+          <View key={lugar.id} style={themedStyles.placeCard}>
+            <Text style={themedStyles.placeName}>{lugar.nombre}</Text>
+            <Text style={themedStyles.placeDescription}>
               {lugar.descripcionCorta ?? lugar.descripcion}
             </Text>
-            <Text style={styles.coordinates}>
+            <Text style={themedStyles.coordinates}>
               {lugar.coordenadas.latitud}, {lugar.coordenadas.longitud}
             </Text>
           </View>
         ))}
 
-        <Text style={styles.footer}>
+        <Text style={themedStyles.footer}>
           Categorías recibidas: {cantidadCategorias}
         </Text>
       </ScrollView>

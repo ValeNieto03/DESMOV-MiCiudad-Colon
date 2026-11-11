@@ -1,3 +1,4 @@
+import { useThemedStyles } from "@/hooks/use-theme";
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -14,6 +15,7 @@ import MapView, {
 } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useThemeContext } from '@/contexts/theme-context';
 
 import { lugares } from '@/data/lugares';
 import { inicializarBaseDeDatos } from '@/servicios/visitas';
@@ -59,7 +61,9 @@ const REGION_INICIAL: Region = {
 };
 
 export default function HomeScreen() {
+  const themedStyles = useThemedStyles(styles);
   const router = useRouter();
+  const { colors } = useThemeContext();
   const mapRef = useRef<MapView>(null);
 
   const [selectedPlaceId, setSelectedPlaceId] =
@@ -143,53 +147,64 @@ export default function HomeScreen() {
   }, [selectedPlace]);
 
   return (
-    <View style={styles.screen}>
-      <SafeAreaView style={styles.container}>
+    <View style={[themedStyles.screen, { backgroundColor: colors.background }]}>
+      <SafeAreaView
+        style={[themedStyles.container, { backgroundColor: colors.background }]}
+      >
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={themedStyles.scrollContent}
           nestedScrollEnabled
         >
           {/* Encabezado */}
-          <View style={styles.header}>
+          <View style={themedStyles.header}>
             <View>
-              <Text style={styles.smallTitle}>
+              <Text style={[themedStyles.smallTitle, { color: colors.primary }]}>
                 GUÍA TURÍSTICA
               </Text>
 
-              <Text style={styles.title}>Colón</Text>
+              <Text style={[themedStyles.title, { color: colors.text }]}>Colón</Text>
 
-              <Text style={styles.subtitle}>
+              <Text style={[themedStyles.subtitle, { color: colors.textSecondary }]}>
                 Descubrí todo lo que esta ciudad tiene para vos
               </Text>
             </View>
 
             <Pressable
-              style={styles.profileButton}
+              style={[
+                themedStyles.profileButton,
+                { backgroundColor: colors.backgroundSelected },
+              ]}
               onPress={() => router.push('/yo')}
             >
-              <Text style={styles.profileIcon}>👤</Text>
+              <Text style={themedStyles.profileIcon}>👤</Text>
             </Pressable>
           </View>
 
           {/* Buscador */}
           <Pressable
-            style={styles.search}
+            style={[
+              themedStyles.search,
+              {
+                backgroundColor: colors.backgroundElement,
+                borderColor: colors.inputBorder,
+              },
+            ]}
             onPress={() => router.push('/lugares')}
           >
-            <Text style={styles.searchIcon}>⌕</Text>
+            <Text style={[themedStyles.searchIcon, { color: colors.primary }]}>⌕</Text>
 
-            <Text style={styles.searchText}>
+            <Text style={[themedStyles.searchText, { color: colors.textSecondary }]}>
               ¿Qué querés conocer?
             </Text>
           </Pressable>
 
           {/* Google Maps */}
-          <View style={styles.mapCard}>
+          <View style={themedStyles.mapCard}>
             <MapView
               ref={mapRef}
               provider={PROVIDER_GOOGLE}
-              style={styles.map}
+              style={themedStyles.map}
               initialRegion={REGION_INICIAL}
               showsCompass
               showsScale
@@ -216,14 +231,14 @@ export default function HomeScreen() {
                   >
                     <View
                       style={[
-                        styles.marker,
+                        themedStyles.marker,
                         seleccionado
-                          ? styles.markerSelected
-                          : styles.markerNormal,
+                          ? themedStyles.markerSelected
+                          : themedStyles.markerNormal,
                       ]}
                     >
                       {seleccionado && (
-                        <View style={styles.markerDot} />
+                        <View style={themedStyles.markerDot} />
                       )}
                     </View>
                   </Marker>
@@ -233,8 +248,8 @@ export default function HomeScreen() {
           </View>
 
           {/* Lugares cercanos */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>
+          <View style={themedStyles.sectionHeader}>
+            <Text style={[themedStyles.sectionTitle, { color: colors.text }]}>
               {selectedPlace.id === 'centro-colon'
                 ? 'Lo que tenés cerca'
                 : `Cerca de ${selectedPlace.nombre}`}
@@ -243,36 +258,52 @@ export default function HomeScreen() {
             <Pressable
               onPress={() => router.push('/lugares')}
             >
-              <Text style={styles.seeMore}>Ver todos</Text>
+              <Text style={[themedStyles.seeMore, { color: colors.primary }]}>Ver todos</Text>
             </Pressable>
           </View>
 
           {/* Tarjetas */}
-          <View style={styles.cardsContainer}>
+          <View style={themedStyles.cardsContainer}>
             {lugaresCercanos.slice(0, 3).map((lugar) => (
               <Pressable
                 key={lugar.id}
-                style={styles.placeCard}
+                style={[
+                  themedStyles.placeCard,
+                  {
+                    backgroundColor: colors.backgroundElement,
+                    borderColor: colors.border,
+                  },
+                ]}
                 onPress={() => {
                   setSelectedPlaceId(lugar.id);
                 }}
               >
-                <View style={styles.placeIcon}>
-                  <Text style={styles.placeIconText}>
+                <View
+                  style={[
+                    themedStyles.placeIcon,
+                    { backgroundColor: colors.backgroundSelected },
+                  ]}
+                >
+                  <Text style={themedStyles.placeIconText}>
                     {lugar.icono}
                   </Text>
                 </View>
 
-                <View style={styles.placeInfo}>
-                  <Text style={styles.placeName}>
+                <View style={themedStyles.placeInfo}>
+                  <Text style={[themedStyles.placeName, { color: colors.text }]}>
                     {lugar.nombre}
                   </Text>
 
-                  <Text style={styles.placeCategory}>
+                  <Text
+                    style={[
+                      themedStyles.placeCategory,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
                     {lugar.categoria}
                   </Text>
 
-                  <Text style={styles.placeDistance}>
+                  <Text style={[themedStyles.placeDistance, { color: colors.success }]}>
                     {formatearDistancia(lugar.distancia)}
                   </Text>
                 </View>
@@ -286,7 +317,7 @@ export default function HomeScreen() {
                   }
                   hitSlop={10}
                 >
-                  <Text style={styles.arrow}>›</Text>
+                  <Text style={[themedStyles.arrow, { color: colors.primary }]}>›</Text>
                 </Pressable>
               </Pressable>
             ))}

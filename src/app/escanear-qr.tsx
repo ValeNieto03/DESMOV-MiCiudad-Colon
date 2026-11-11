@@ -1,3 +1,4 @@
+import { useThemedStyles } from "@/hooks/use-theme";
 import { useRef, useState } from 'react';
 import {
     Alert,
@@ -24,6 +25,7 @@ import {
 const PREFIJO_QR = 'MICiudad:lugar:';
 
 export default function EscanearQRScreen() {
+  const themedStyles = useThemedStyles(styles);
     const router = useRouter();
 
     const { lugarId } = useLocalSearchParams<{
@@ -281,9 +283,9 @@ export default function EscanearQRScreen() {
 
     if (!permission) {
         return (
-            <SafeAreaView style={styles.container}>
-                <View style={styles.center}>
-                    <Text style={styles.text}>
+            <SafeAreaView style={themedStyles.container}>
+                <View style={themedStyles.center}>
+                    <Text style={themedStyles.text}>
                         Cargando cámara...
                     </Text>
                 </View>
@@ -293,31 +295,31 @@ export default function EscanearQRScreen() {
 
     if (!permission.granted) {
         return (
-            <SafeAreaView style={styles.container}>
-                <View style={styles.center}>
-                    <Text style={styles.title}>
+            <SafeAreaView style={themedStyles.container}>
+                <View style={themedStyles.center}>
+                    <Text style={themedStyles.title}>
                         Necesitamos acceder a la cámara
                     </Text>
 
-                    <Text style={styles.description}>
+                    <Text style={themedStyles.description}>
                         La cámara se utiliza para escanear el código QR
                         del lugar turístico.
                     </Text>
 
                     <Pressable
-                        style={styles.button}
+                        style={themedStyles.button}
                         onPress={requestPermission}
                     >
-                        <Text style={styles.buttonText}>
+                        <Text style={themedStyles.buttonText}>
                             Dar permiso a la cámara
                         </Text>
                     </Pressable>
 
                     <Pressable
-                        style={styles.secondaryButton}
+                        style={themedStyles.secondaryButton}
                         onPress={() => router.back()}
                     >
-                        <Text style={styles.secondaryButtonText}>
+                        <Text style={themedStyles.secondaryButtonText}>
                             Volver
                         </Text>
                     </Pressable>
@@ -331,26 +333,26 @@ export default function EscanearQRScreen() {
     // ------------------------------------------
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.title}>
+        <SafeAreaView style={themedStyles.container}>
+            <View style={themedStyles.header}>
+                <Text style={themedStyles.title}>
                     Escanear código QR
                 </Text>
 
                 {lugarEsperado && (
-                    <Text style={styles.lugarEsperado}>
+                    <Text style={themedStyles.lugarEsperado}>
                         Apuntá la cámara al código QR de:
                         {'\n'}
-                        <Text style={styles.lugarNombre}>
+                        <Text style={themedStyles.lugarNombre}>
                             {lugarEsperado.nombre}
                         </Text>
                     </Text>
                 )}
             </View>
 
-            <View style={styles.cameraContainer}>
+            <View style={themedStyles.cameraContainer}>
                 <CameraView
-                    style={styles.camera}
+                    style={themedStyles.camera}
                     facing="back"
                     barcodeScannerSettings={{
                         barcodeTypes: ['qr'],
@@ -362,47 +364,47 @@ export default function EscanearQRScreen() {
                     }
                 />
 
-                <View style={styles.scanBox}>
+                <View style={themedStyles.scanBox}>
                     <View
                         style={[
-                            styles.corner,
-                            styles.topLeft,
+                            themedStyles.corner,
+                            themedStyles.topLeft,
                         ]}
                     />
 
                     <View
                         style={[
-                            styles.corner,
-                            styles.topRight,
+                            themedStyles.corner,
+                            themedStyles.topRight,
                         ]}
                     />
 
                     <View
                         style={[
-                            styles.corner,
-                            styles.bottomLeft,
+                            themedStyles.corner,
+                            themedStyles.bottomLeft,
                         ]}
                     />
 
                     <View
                         style={[
-                            styles.corner,
-                            styles.bottomRight,
+                            themedStyles.corner,
+                            themedStyles.bottomRight,
                         ]}
                     />
                 </View>
             </View>
 
-            <View style={styles.bottom}>
-                <Text style={styles.instruction}>
+            <View style={themedStyles.bottom}>
+                <Text style={themedStyles.instruction}>
                     Colocá el código QR dentro del recuadro
                 </Text>
 
                 <Pressable
-                    style={styles.cancelButton}
+                    style={themedStyles.cancelButton}
                     onPress={() => router.back()}
                 >
-                    <Text style={styles.cancelButtonText}>
+                    <Text style={themedStyles.cancelButtonText}>
                         Cancelar
                     </Text>
                 </Pressable>

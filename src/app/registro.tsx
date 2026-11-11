@@ -1,3 +1,5 @@
+import { useThemedStyles } from "@/hooks/use-theme";
+import { useThemeContext } from '@/contexts/theme-context';
 
 import { useRef, useState } from 'react';
 import {
@@ -18,6 +20,8 @@ import { useRouter } from 'expo-router';
 import { registrarUsuario } from '@/servicios/autenticacion';
 
 export default function RegistroScreen() {
+  const themedStyles = useThemedStyles(styles);
+  const { colors } = useThemeContext();
     const router = useRouter();
 
     const repetirPasswordRef =
@@ -126,47 +130,47 @@ export default function RegistroScreen() {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={themedStyles.container}>
             <KeyboardAvoidingView
-                style={styles.keyboard}
+                style={themedStyles.keyboard}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
                 <ScrollView
-                    contentContainerStyle={styles.content}
+                    contentContainerStyle={themedStyles.content}
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                 >
                     {/* Volver */}
                     <Pressable
-                        style={styles.backButton}
+                        style={themedStyles.backButton}
                         onPress={() => router.back()}
                     >
-                        <Text style={styles.backText}>
+                        <Text style={themedStyles.backText}>
                             ‹ Volver
                         </Text>
                     </Pressable>
 
                     {/* Encabezado */}
-                    <View style={styles.header}>
-                        <Text style={styles.title}>
+                    <View style={themedStyles.header}>
+                        <Text style={themedStyles.title}>
                             Crear una cuenta
                         </Text>
 
-                        <Text style={styles.subtitle}>
+                        <Text style={themedStyles.subtitle}>
                             Guardá tus favoritos y tu recorrido en Mi Ciudad.
                         </Text>
                     </View>
 
                     {/* Nombre */}
-                    <View style={styles.field}>
-                        <Text style={styles.label}>
+                    <View style={themedStyles.field}>
+                        <Text style={themedStyles.label}>
                             Nombre
                         </Text>
 
                         <TextInput
-                            style={styles.input}
+                            style={themedStyles.input}
                             placeholder="Tu nombre"
-                            placeholderTextColor="#99958C"
+                            placeholderTextColor={colors.textSecondary}
                             value={nombre}
                             onChangeText={setNombre}
                             autoCapitalize="words"
@@ -175,15 +179,15 @@ export default function RegistroScreen() {
                     </View>
 
                     {/* Email */}
-                    <View style={styles.field}>
-                        <Text style={styles.label}>
+                    <View style={themedStyles.field}>
+                        <Text style={themedStyles.label}>
                             Email
                         </Text>
 
                         <TextInput
-                            style={styles.input}
+                            style={themedStyles.input}
                             placeholder="tu@email.com"
-                            placeholderTextColor="#99958C"
+                            placeholderTextColor={colors.textSecondary}
                             value={email}
                             onChangeText={setEmail}
                             keyboardType="email-address"
@@ -194,16 +198,16 @@ export default function RegistroScreen() {
                     </View>
 
                     {/* Contraseña */}
-                    <View style={styles.field}>
-                        <Text style={styles.label}>
+                    <View style={themedStyles.field}>
+                        <Text style={themedStyles.label}>
                             Contraseña
                         </Text>
 
-                        <View style={styles.passwordContainer}>
+                        <View style={themedStyles.passwordContainer}>
                             <TextInput
-                                style={styles.passwordInput}
+                                style={themedStyles.passwordInput}
                                 placeholder="Mínimo 8 caracteres"
-                                placeholderTextColor="#99958C"
+                                placeholderTextColor={colors.textSecondary}
                                 value={password}
                                 onChangeText={setPassword}
                                 secureTextEntry={!mostrarPassword}
@@ -214,13 +218,13 @@ export default function RegistroScreen() {
                             />
 
                             <Pressable
-                                style={styles.eyeButton}
+                                style={themedStyles.eyeButton}
                                 onPress={() =>
                                     setMostrarPassword(!mostrarPassword)
                                 }
                                 hitSlop={8}
                             >
-                                <Text style={styles.eyeText}>
+                                <Text style={themedStyles.eyeText}>
                                     {mostrarPassword ? '🙈' : '👁️'}
                                 </Text>
                             </Pressable>
@@ -228,17 +232,17 @@ export default function RegistroScreen() {
                     </View>
 
                     {/* Repetir contraseña */}
-                    <View style={styles.field}>
-                        <Text style={styles.label}>
+                    <View style={themedStyles.field}>
+                        <Text style={themedStyles.label}>
                             Repetir contraseña
                         </Text>
 
-                        <View style={styles.passwordContainer}>
+                        <View style={themedStyles.passwordContainer}>
                             <TextInput
                                 ref={repetirPasswordRef}
-                                style={styles.passwordInput}
+                                style={themedStyles.passwordInput}
                                 placeholder="Volvé a ingresar tu contraseña"
-                                placeholderTextColor="#99958C"
+                                placeholderTextColor={colors.textSecondary}
                                 value={repetirPassword}
                                 onChangeText={setRepetirPassword}
                                 secureTextEntry={!mostrarRepetirPassword}
@@ -247,7 +251,7 @@ export default function RegistroScreen() {
                             />
 
                             <Pressable
-                                style={styles.eyeButton}
+                                style={themedStyles.eyeButton}
                                 onPress={() =>
                                     setMostrarRepetirPassword(
                                         !mostrarRepetirPassword
@@ -255,7 +259,7 @@ export default function RegistroScreen() {
                                 }
                                 hitSlop={8}
                             >
-                                <Text style={styles.eyeText}>
+                                <Text style={themedStyles.eyeText}>
                                     {mostrarRepetirPassword ? '🙈' : '👁️'}
                                 </Text>
                             </Pressable>
@@ -265,13 +269,13 @@ export default function RegistroScreen() {
                     {/* Crear cuenta */}
                     <Pressable
                         style={[
-                            styles.registerButton,
-                            cargando && styles.registerButtonDisabled,
+                            themedStyles.registerButton,
+                            cargando && themedStyles.registerButtonDisabled,
                         ]}
                         onPress={manejarRegistro}
                         disabled={cargando}
                     >
-                        <Text style={styles.registerButtonText}>
+                        <Text style={themedStyles.registerButtonText}>
                             {cargando
                                 ? 'Creando cuenta...'
                                 : 'Crear cuenta'}
@@ -279,15 +283,15 @@ export default function RegistroScreen() {
                     </Pressable>
 
                     {/* Ir al login */}
-                    <View style={styles.loginContainer}>
-                        <Text style={styles.loginText}>
+                    <View style={themedStyles.loginContainer}>
+                        <Text style={themedStyles.loginText}>
                             ¿Ya tenés una cuenta?
                         </Text>
 
                         <Pressable
                             onPress={() => router.replace('/login')}
                         >
-                            <Text style={styles.loginLink}>
+                            <Text style={themedStyles.loginLink}>
                                 Iniciar sesión
                             </Text>
                         </Pressable>

@@ -1,3 +1,5 @@
+import { useThemedStyles } from "@/hooks/use-theme";
+import { useThemeContext } from '@/contexts/theme-context';
 
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -34,6 +36,8 @@ function formatearFecha(fecha: string): string {
 }
 
 export default function AgendaScreen() {
+  const themedStyles = useThemedStyles(styles);
+  const { colors } = useThemeContext();
   const [eventos, setEventos] = useState<EventoAPI[]>([]);
   const [lugares, setLugares] = useState<LugarAPI[]>([]);
   const [guardadosIds, setGuardadosIds] = useState<string[]>([]);
@@ -163,41 +167,41 @@ export default function AgendaScreen() {
 
   return (
     <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.contenido}
+      style={themedStyles.container}
+      contentContainerStyle={themedStyles.contenido}
     >
-      <View style={styles.encabezado}>
-        <Text style={styles.titulo}>Agenda de Colón</Text>
+      <View style={themedStyles.encabezado}>
+        <Text style={themedStyles.titulo}>Agenda de Colón</Text>
 
-        <Text style={styles.subtitulo}>
+        <Text style={themedStyles.subtitulo}>
           Descubrí actividades y guardá los eventos que quieras disfrutar.
         </Text>
       </View>
 
       <Pressable
-        style={styles.botonActualizar}
+        style={themedStyles.botonActualizar}
         onPress={cargarAgenda}
         disabled={cargando || actualizandoId !== null}
       >
-        <Text style={styles.textoBotonActualizar}>
+        <Text style={themedStyles.textoBotonActualizar}>
           {cargando ? 'Actualizando...' : '↻ Actualizar agenda'}
         </Text>
       </Pressable>
 
       {cargando ? (
-        <View style={styles.estado}>
-          <ActivityIndicator size="large" color="#28745A" />
-          <Text style={styles.textoEstado}>
+        <View style={themedStyles.estado}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={themedStyles.textoEstado}>
             Buscando próximos eventos...
           </Text>
         </View>
       ) : error ? (
-        <View style={styles.tarjetaEstado}>
-          <Text style={styles.tituloEstado}>
+        <View style={themedStyles.tarjetaEstado}>
+          <Text style={themedStyles.tituloEstado}>
             No pudimos cargar la agenda
           </Text>
 
-          <Text style={styles.textoEstado}>
+          <Text style={themedStyles.textoEstado}>
             {error === 'API_NO_DISPONIBLE'
               ? 'No se pudo conectar con el servidor. Revisá tu conexión.'
               : error === 'SESION_NO_INICIADA' ||
@@ -208,29 +212,29 @@ export default function AgendaScreen() {
           </Text>
 
           <Pressable
-            style={styles.botonReintentar}
+            style={themedStyles.botonReintentar}
             onPress={cargarAgenda}
           >
-            <Text style={styles.textoBotonReintentar}>
+            <Text style={themedStyles.textoBotonReintentar}>
               Intentar nuevamente
             </Text>
           </Pressable>
         </View>
       ) : eventosFuturos.length === 0 ? (
-        <View style={styles.tarjetaEstado}>
-          <Text style={styles.emojiVacio}>📅</Text>
+        <View style={themedStyles.tarjetaEstado}>
+          <Text style={themedStyles.emojiVacio}>📅</Text>
 
-          <Text style={styles.tituloEstado}>
+          <Text style={themedStyles.tituloEstado}>
             No hay próximos eventos
           </Text>
 
-          <Text style={styles.textoEstado}>
+          <Text style={themedStyles.textoEstado}>
             Por el momento no hay actividades programadas para los próximos días.
           </Text>
         </View>
       ) : (
         <>
-          <Text style={styles.contador}>
+          <Text style={themedStyles.contador}>
             {eventosFuturos.length}{' '}
             {eventosFuturos.length === 1
               ? 'evento próximo'
@@ -242,37 +246,37 @@ export default function AgendaScreen() {
             const actualizando = actualizandoId === evento.id;
 
             return (
-              <View key={evento.id} style={styles.tarjeta}>
+              <View key={evento.id} style={themedStyles.tarjeta}>
                 {evento.imagenUrl ? (
                   <Image
                     source={{
                       uri: prepararUrlImagen(evento.imagenUrl),
                     }}
-                    style={styles.imagen}
+                    style={themedStyles.imagen}
                     resizeMode="cover"
                   />
                 ) : (
-                  <View style={styles.imagenVacia}>
-                    <Text style={styles.emojiImagen}>🎭</Text>
-                    <Text style={styles.textoImagenVacia}>
+                  <View style={themedStyles.imagenVacia}>
+                    <Text style={themedStyles.emojiImagen}>🎭</Text>
+                    <Text style={themedStyles.textoImagenVacia}>
                       Evento de Colón
                     </Text>
                   </View>
                 )}
 
-                <View style={styles.contenidoTarjeta}>
+                <View style={themedStyles.contenidoTarjeta}>
                   <View
                     style={[
-                      styles.etiquetaEstado,
+                      themedStyles.etiquetaEstado,
                       evento.estado === 'suspendido' &&
-                      styles.etiquetaSuspendido,
+                      themedStyles.etiquetaSuspendido,
                     ]}
                   >
                     <Text
                       style={[
-                        styles.textoEtiquetaEstado,
+                        themedStyles.textoEtiquetaEstado,
                         evento.estado === 'suspendido' &&
-                        styles.textoSuspendido,
+                        themedStyles.textoSuspendido,
                       ]}
                     >
                       {evento.estado === 'suspendido'
@@ -281,33 +285,33 @@ export default function AgendaScreen() {
                     </Text>
                   </View>
 
-                  <Text style={styles.tituloEvento}>
+                  <Text style={themedStyles.tituloEvento}>
                     {evento.titulo}
                   </Text>
 
-                  <View style={styles.dato}>
-                    <Text style={styles.iconoDato}>📅</Text>
-                    <Text style={styles.textoDato}>
+                  <View style={themedStyles.dato}>
+                    <Text style={themedStyles.iconoDato}>📅</Text>
+                    <Text style={themedStyles.textoDato}>
                       {formatearFecha(evento.inicio)}
                     </Text>
                   </View>
 
-                  <View style={styles.dato}>
-                    <Text style={styles.iconoDato}>📍</Text>
-                    <Text style={styles.textoDato}>
+                  <View style={themedStyles.dato}>
+                    <Text style={themedStyles.iconoDato}>📍</Text>
+                    <Text style={themedStyles.textoDato}>
                       {obtenerNombreLugar(evento)}
                     </Text>
                   </View>
 
                   {evento.descripcion ? (
-                    <Text style={styles.descripcion}>
+                    <Text style={themedStyles.descripcion}>
                       {evento.descripcion}
                     </Text>
                   ) : null}
 
-                  <View style={styles.separador} />
+                  <View style={themedStyles.separador} />
 
-                  <Text style={styles.precio}>
+                  <Text style={themedStyles.precio}>
                     {evento.precio == null || evento.precio === 0
                       ? 'Entrada gratuita o sin precio informado'
                       : `Entrada: ${new Intl.NumberFormat('es-AR', {
@@ -319,9 +323,9 @@ export default function AgendaScreen() {
 
                   <Pressable
                     style={[
-                      styles.botonAgendar,
-                      guardado && styles.botonGuardado,
-                      actualizando && styles.botonDeshabilitado,
+                      themedStyles.botonAgendar,
+                      guardado && themedStyles.botonGuardado,
+                      actualizando && themedStyles.botonDeshabilitado,
                     ]}
                     onPress={() => alternarEvento(evento)}
                     disabled={
@@ -330,9 +334,9 @@ export default function AgendaScreen() {
                     }
                   >
                     {actualizando ? (
-                      <ActivityIndicator color="#FFFFFF" />
+                      <ActivityIndicator color={colors.onPrimary} />
                     ) : (
-                      <Text style={styles.textoBotonAgendar}>
+                      <Text style={themedStyles.textoBotonAgendar}>
                         {evento.estado === 'suspendido'
                           ? 'Evento suspendido'
                           : guardado

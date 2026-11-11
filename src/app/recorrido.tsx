@@ -1,10 +1,12 @@
+import { useThemedStyles } from "@/hooks/use-theme";
 import { StyleSheet, Text, View } from 'react-native';
 
 export default function RecorridoScreen() {
+  const themedStyles = useThemedStyles(styles);
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Mi recorrido</Text>
-      <Text style={styles.subtitle}>
+    <View style={themedStyles.container}>
+      <Text style={themedStyles.title}>Mi recorrido</Text>
+      <Text style={themedStyles.subtitle}>
         Tus lugares visitados en Colón
       </Text>
     </View>

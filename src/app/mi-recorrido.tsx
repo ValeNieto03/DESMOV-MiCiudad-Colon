@@ -1,3 +1,4 @@
+import { useThemedStyles } from "@/hooks/use-theme";
 import { useCallback, useState } from 'react';
 import {
     FlatList,
@@ -23,6 +24,7 @@ import {
 } from '@/servicios/visitas';
 
 export default function MiRecorridoScreen() {
+  const themedStyles = useThemedStyles(styles);
     const [visitas, setVisitas] = useState<Visita[]>([]);
     const [actualizando, setActualizando] = useState(false);
 
@@ -194,38 +196,38 @@ export default function MiRecorridoScreen() {
         const lugar = obtenerLugar(item.lugarId);
 
         return (
-            <View style={styles.card}>
+            <View style={themedStyles.card}>
 
                 {/* Encabezado */}
-                <View style={styles.cardHeader}>
+                <View style={themedStyles.cardHeader}>
 
                     {/* Imagen del lugar */}
                     {lugar?.imagen ? (
                         <Image
                             source={lugar.imagen}
-                            style={styles.placeImage}
+                            style={themedStyles.placeImage}
                             resizeMode="cover"
                         />
                     ) : (
-                        <View style={styles.iconContainer}>
-                            <Text style={styles.icon}>
+                        <View style={themedStyles.iconContainer}>
+                            <Text style={themedStyles.icon}>
                                 {obtenerIconoOrigen(item.origen)}
                             </Text>
                         </View>
                     )}
 
                     {/* Información del lugar */}
-                    <View style={styles.cardTitleContainer}>
+                    <View style={themedStyles.cardTitleContainer}>
 
                         <Text
-                            style={styles.placeName}
+                            style={themedStyles.placeName}
                             numberOfLines={2}
                         >
                             {lugar?.nombre ?? 'Lugar turístico'}
                         </Text>
 
                         <Text
-                            style={styles.origin}
+                            style={themedStyles.origin}
                             numberOfLines={2}
                         >
                             {obtenerTextoOrigen(item.origen)}
@@ -236,27 +238,27 @@ export default function MiRecorridoScreen() {
                 </View>
 
                 {/* Separador */}
-                <View style={styles.separator} />
+                <View style={themedStyles.separator} />
 
                 {/* Información */}
-                <View style={styles.infoContainer}>
+                <View style={themedStyles.infoContainer}>
 
-                    <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>
+                    <View style={themedStyles.infoRow}>
+                        <Text style={themedStyles.infoLabel}>
                             Fecha
                         </Text>
 
-                        <Text style={styles.infoValue}>
+                        <Text style={themedStyles.infoValue}>
                             {formatearFecha(item.fechaHora)}
                         </Text>
                     </View>
 
-                    <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>
+                    <View style={themedStyles.infoRow}>
+                        <Text style={themedStyles.infoLabel}>
                             Hora
                         </Text>
 
-                        <Text style={styles.infoValue}>
+                        <Text style={themedStyles.infoValue}>
                             {formatearHora(item.fechaHora)}
                         </Text>
                     </View>
@@ -267,23 +269,23 @@ export default function MiRecorridoScreen() {
                 <View
                     style={
                         item.sincronizada
-                            ? styles.syncBadge
-                            : styles.pendingBadge
+                            ? themedStyles.syncBadge
+                            : themedStyles.pendingBadge
                     }
                 >
                     <View
                         style={
                             item.sincronizada
-                                ? styles.syncDot
-                                : styles.pendingDot
+                                ? themedStyles.syncDot
+                                : themedStyles.pendingDot
                         }
                     />
 
                     <Text
                         style={
                             item.sincronizada
-                                ? styles.syncText
-                                : styles.pendingText
+                                ? themedStyles.syncText
+                                : themedStyles.pendingText
                         }
                     >
                         {item.sincronizada
@@ -294,13 +296,13 @@ export default function MiRecorridoScreen() {
 
                 {/* Nota */}
                 {item.nota && (
-                    <View style={styles.noteContainer}>
+                    <View style={themedStyles.noteContainer}>
 
-                        <Text style={styles.noteTitle}>
+                        <Text style={themedStyles.noteTitle}>
                             Nota
                         </Text>
 
-                        <Text style={styles.noteText}>
+                        <Text style={themedStyles.noteText}>
                             {item.nota}
                         </Text>
 
@@ -309,9 +311,9 @@ export default function MiRecorridoScreen() {
 
                 {/* Foto de la visita */}
                 {item.fotoUri && (
-                    <View style={styles.photoContainer}>
+                    <View style={themedStyles.photoContainer}>
 
-                        <Text style={styles.photoText}>
+                        <Text style={themedStyles.photoText}>
                             Foto de la visita guardada
                         </Text>
 
@@ -327,27 +329,27 @@ export default function MiRecorridoScreen() {
     // ------------------------------------------
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={themedStyles.container}>
 
             {/* Encabezado */}
-            <View style={styles.header}>
+            <View style={themedStyles.header}>
 
-                <View style={styles.headerTextContainer}>
-                    <Text style={styles.smallTitle}>
+                <View style={themedStyles.headerTextContainer}>
+                    <Text style={themedStyles.smallTitle}>
                         MI EXPERIENCIA
                     </Text>
 
-                    <Text style={styles.title}>
+                    <Text style={themedStyles.title}>
                         Mi recorrido
                     </Text>
 
-                    <Text style={styles.subtitle}>
+                    <Text style={themedStyles.subtitle}>
                         Los lugares que visitaste en Colón
                     </Text>
                 </View>
 
-                <View style={styles.headerIcon}>
-                    <Text style={styles.headerIconText}>
+                <View style={themedStyles.headerIcon}>
+                    <Text style={themedStyles.headerIconText}>
                         ⌖
                     </Text>
                 </View>
@@ -357,19 +359,19 @@ export default function MiRecorridoScreen() {
             {/* Contenido */}
             {visitas.length === 0 ? (
 
-                <View style={styles.emptyContainer}>
+                <View style={themedStyles.emptyContainer}>
 
-                    <View style={styles.emptyIconContainer}>
-                        <Text style={styles.emptyIcon}>
+                    <View style={themedStyles.emptyIconContainer}>
+                        <Text style={themedStyles.emptyIcon}>
                             ⌖
                         </Text>
                     </View>
 
-                    <Text style={styles.emptyTitle}>
+                    <Text style={themedStyles.emptyTitle}>
                         Todavía no tenés visitas
                     </Text>
 
-                    <Text style={styles.emptyText}>
+                    <Text style={themedStyles.emptyText}>
                         Cuando registres un lugar turístico,
                         aparecerá acá.
                     </Text>
@@ -382,7 +384,7 @@ export default function MiRecorridoScreen() {
                     data={visitas}
                     keyExtractor={(item) => item.id}
                     renderItem={renderVisita}
-                    contentContainerStyle={styles.list}
+                    contentContainerStyle={themedStyles.list}
                     refreshControl={
                         <RefreshControl
                             refreshing={actualizando}
