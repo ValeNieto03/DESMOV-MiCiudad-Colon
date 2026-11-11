@@ -1,7 +1,8 @@
 import { useThemedStyles } from "@/hooks/use-theme";
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { Directory, File, Paths } from 'expo-file-system';
+import Storage from 'expo-sqlite/kv-store';
 import {
     ActivityIndicator,
     Alert,
@@ -30,6 +31,13 @@ import {
     type Visita,
 } from '@/servicios/visitas';
 import { sincronizarVisita } from '@/servicios/sincronizacion-visitas';
+
+const PENDING_CAMERA_KEY = 'mi-ciudad-pending-visit-camera';
+
+type PendingCameraState = {
+    visita: Visita;
+    nota: string;
+};
 
 export default function MiRecorridoScreen() {
   const themedStyles = useThemedStyles(styles);
@@ -97,6 +105,60 @@ export default function MiRecorridoScreen() {
             cargarVisitas();
         }, [cargarVisitas])
     );
+
+    useEffect(() => {
+        let mounted = true;
+
+        const recuperarFotoPendiente = async () => {
+            try {
+                const estadoGuardado = await Storage.getItemAsync(PENDING_CAMERA_KEY);
+
+                if (!estadoGuardado) return;
+
+                const estado = JSON.parse(estadoGuardado) as PendingCameraState;
+                const resultado = await ImagePicker.getPendingResultAsync();
+
+                if (!mounted) return;
+
+                setVisitaEnEdicion(estado.visita);
+                setNotaTemporal(estado.nota);
+                setFotoTemporalUri(estado.visita.fotoUri);
+
+                if (!resultado) {
+                    Alert.alert(
+                        'No se recuperó la foto',
+                        'La app volvió desde la cámara, pero Android no devolvió la imagen. Podés volver a intentarlo.'
+                    );
+                    await Storage.removeItemAsync(PENDING_CAMERA_KEY);
+                    return;
+                }
+
+                if ('code' in resultado) {
+                    console.error('Error al recuperar la foto pendiente:', resultado);
+                    Alert.alert(
+                        'No se pudo recuperar la foto',
+                        'Volvé a sacar la foto para agregarla a esta visita.'
+                    );
+                    await Storage.removeItemAsync(PENDING_CAMERA_KEY);
+                    return;
+                }
+
+                if (!resultado.canceled && resultado.assets[0]) {
+                    setFotoTemporalUri(resultado.assets[0].uri);
+                }
+
+                await Storage.removeItemAsync(PENDING_CAMERA_KEY);
+            } catch (error) {
+                console.error('Error al recuperar la foto pendiente:', error);
+            }
+        };
+
+        void recuperarFotoPendiente();
+
+        return () => {
+            mounted = false;
+        };
+    }, []);
 
     // ------------------------------------------
     // Actualizar
@@ -166,6 +228,8 @@ export default function MiRecorridoScreen() {
     };
 
     const tomarFotoRecuerdo = async () => {
+        if (!visitaEnEdicion) return;
+
         try {
             const permiso = await ImagePicker.requestCameraPermissionsAsync();
 
@@ -177,15 +241,27 @@ export default function MiRecorridoScreen() {
                 return;
             }
 
+            const estadoPendiente: PendingCameraState = {
+                visita: visitaEnEdicion,
+                nota: notaTemporal,
+            };
+            await Storage.setItemAsync(
+                PENDING_CAMERA_KEY,
+                JSON.stringify(estadoPendiente)
+            );
+
             const resultado = await ImagePicker.launchCameraAsync({
                 mediaTypes: ['images'],
                 quality: 0.8,
             });
 
+            await Storage.removeItemAsync(PENDING_CAMERA_KEY);
+
             if (!resultado.canceled && resultado.assets[0]) {
                 setFotoTemporalUri(resultado.assets[0].uri);
             }
         } catch (error) {
+            await Storage.removeItemAsync(PENDING_CAMERA_KEY).catch(() => undefined);
             console.error('Error al tomar una foto del recuerdo:', error);
             Alert.alert('No se pudo abrir la cámara', 'Intentá nuevamente.');
         }
