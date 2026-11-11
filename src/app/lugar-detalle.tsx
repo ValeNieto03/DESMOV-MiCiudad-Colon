@@ -47,18 +47,6 @@ import {
   alternarFavorito,
 } from '@/servicios/favoritos';
 
-// --------------------------------------------------
-// MODO DE PRUEBA
-// --------------------------------------------------
-//
-// true  = simula que estamos en el lugar turístico.
-// false = utiliza la ubicación GPS real del teléfono.
-//
-// Para la versión final debe quedar en false.
-//
-
-const MODO_PRUEBA_GPS = true;
-
 export default function LugarDetalleScreen() {
   const themedStyles = useThemedStyles(styles);
   const router = useRouter();
@@ -463,41 +451,17 @@ export default function LugarDetalleScreen() {
       // OBTENER UBICACIÓN
       // ----------------------------------------------
 
-      let latUsuario: number;
-      let lonUsuario: number;
+      const ubicacion = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
 
-      if (MODO_PRUEBA_GPS) {
-        // --------------------------------------------
-        // MODO DE PRUEBA
-        // --------------------------------------------
+      const latUsuario = ubicacion.coords.latitude;
+      const lonUsuario = ubicacion.coords.longitude;
 
-        latUsuario = lugar.latitud;
-        lonUsuario = lugar.longitud;
-
-        console.log('🧪 MODO PRUEBA GPS ACTIVADO');
-
-        console.log('📍 Ubicación simulada:', {
-          latitud: latUsuario,
-          longitud: lonUsuario,
-        });
-      } else {
-        // --------------------------------------------
-        // GPS REAL
-        // --------------------------------------------
-
-        const ubicacion =
-          await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.High,
-          });
-
-        latUsuario = ubicacion.coords.latitude;
-        lonUsuario = ubicacion.coords.longitude;
-
-        console.log('📍 GPS REAL:', {
-          latitud: latUsuario,
-          longitud: lonUsuario,
-        });
-      }
+      console.log('📍 Ubicación GPS real:', {
+        latitud: latUsuario,
+        longitud: lonUsuario,
+      });
 
       // ----------------------------------------------
       // CALCULAR DISTANCIA
