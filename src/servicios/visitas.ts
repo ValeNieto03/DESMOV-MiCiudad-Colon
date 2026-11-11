@@ -2,7 +2,9 @@
 import * as SQLite from 'expo-sqlite';
 import type { Place } from '@/data/lugares';
 
-export type OrigenVisita = 'qr' | 'gps' | 'manual';
+// `demo` identifica visitas simuladas en Expo Go/desarrollo; no es un origen
+// válido para enviar a la API.
+export type OrigenVisita = 'qr' | 'gps' | 'manual' | 'demo';
 
 export interface Visita {
   id: string;

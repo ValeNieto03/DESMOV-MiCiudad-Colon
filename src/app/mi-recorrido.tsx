@@ -124,6 +124,9 @@ export default function MiRecorridoScreen() {
             case 'manual':
                 return '✎';
 
+            case 'demo':
+                return '🧪';
+
             default:
                 return '•';
         }
@@ -145,6 +148,9 @@ export default function MiRecorridoScreen() {
 
             case 'manual':
                 return 'Registrada manualmente';
+
+            case 'demo':
+                return 'Ubicación simulada (solo demostración)';
 
             default:
                 return 'Visita registrada';
@@ -290,7 +296,9 @@ export default function MiRecorridoScreen() {
                     >
                         {item.sincronizada
                             ? 'Sincronizada'
-                            : 'Pendiente de sincronización'}
+                            : item.origen === 'demo'
+                                ? 'Demostración local · no se sincroniza'
+                                : 'Pendiente de sincronización'}
                     </Text>
                 </View>
 

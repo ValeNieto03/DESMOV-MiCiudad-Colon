@@ -403,7 +403,8 @@ export default function LugarDetalleScreen() {
   // REGISTRO DE VISITA MEDIANTE GPS
   // --------------------------------------------------
 
-  const registrarVisita = async () => {
+  const registrarVisita = async (modo: 'gps' | 'demo' = 'gps') => {
+    if (modo === 'demo' && !__DEV__) return;
     if (!lugar) return;
 
     if (visitaRegistrada) {
@@ -431,37 +432,39 @@ export default function LugarDetalleScreen() {
         return;
       }
 
-      // ----------------------------------------------
-      // PEDIR PERMISO DE UBICACIÓN
-      // ----------------------------------------------
+      let latUsuario: number;
+      let lonUsuario: number;
 
-      const { status } =
-        await Location.requestForegroundPermissionsAsync();
+      if (modo === 'demo') {
+        // Solo se ofrece en desarrollo y nunca comprueba la ubicación física.
+        latUsuario = lugar.latitud;
+        lonUsuario = lugar.longitud;
+        console.log('🧪 Visita de demostración: ubicación simulada.');
+      } else {
+        const { status } =
+          await Location.requestForegroundPermissionsAsync();
 
-      if (status !== 'granted') {
-        Alert.alert(
-          'Ubicación necesaria',
-          'Necesitamos acceder a tu ubicación para comprobar que estás en este lugar.'
-        );
+        if (status !== 'granted') {
+          Alert.alert(
+            'Ubicación necesaria',
+            'Necesitamos acceder a tu ubicación para comprobar que estás en este lugar.'
+          );
 
-        return;
+          return;
+        }
+
+        const ubicacion = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+
+        latUsuario = ubicacion.coords.latitude;
+        lonUsuario = ubicacion.coords.longitude;
+
+        console.log('📍 Ubicación GPS real:', {
+          latitud: latUsuario,
+          longitud: lonUsuario,
+        });
       }
-
-      // ----------------------------------------------
-      // OBTENER UBICACIÓN
-      // ----------------------------------------------
-
-      const ubicacion = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
-
-      const latUsuario = ubicacion.coords.latitude;
-      const lonUsuario = ubicacion.coords.longitude;
-
-      console.log('📍 Ubicación GPS real:', {
-        latitud: latUsuario,
-        longitud: lonUsuario,
-      });
 
       // ----------------------------------------------
       // CALCULAR DISTANCIA
@@ -530,7 +533,7 @@ export default function LugarDetalleScreen() {
         usuarioId: usuario.id,
         lugarId: lugar.id,
         fechaHora: new Date().toISOString(),
-        origen: 'gps',
+        origen: modo,
         fotoUri: null,
         nota: null,
         sincronizada: false,
@@ -543,19 +546,23 @@ export default function LugarDetalleScreen() {
       await guardarVisita(nuevaVisita);
 
       console.log(
-        '✅ VISITA GPS GUARDADA:',
+        modo === 'demo'
+          ? '🧪 VISITA DE DEMOSTRACIÓN GUARDADA:'
+          : '✅ VISITA GPS GUARDADA:',
         nuevaVisita
       );
 
       setVisitaRegistrada(true);
 
       Alert.alert(
-        '¡Visita registrada!',
-        `Tu visita a ${lugar.nombre} fue registrada correctamente.`
+        modo === 'demo' ? 'Demostración registrada' : '¡Visita registrada!',
+        modo === 'demo'
+          ? `Se guardó una visita de demostración a ${lugar.nombre}. No se comprobó tu ubicación real.`
+          : `Tu visita a ${lugar.nombre} fue registrada correctamente.`
       );
     } catch (error) {
       console.error(
-        '❌ Error al registrar visita mediante GPS:',
+        `❌ Error al registrar visita (${modo}):`,
         error
       );
 
@@ -980,6 +987,30 @@ export default function LugarDetalleScreen() {
                     </Text>
                   </View>
                 </Pressable>
+
+                {__DEV__ && (
+                  <Pressable
+                    style={themedStyles.visitOption}
+                    onPress={() => {
+                      setMostrarOpcionesVisita(false);
+                      registrarVisita('demo');
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Simular visita para la demostración; no comprueba el GPS real"
+                  >
+                    <Text style={themedStyles.visitOptionIcon}>🧪</Text>
+
+                    <View style={themedStyles.visitOptionContent}>
+                      <Text style={themedStyles.visitOptionTitle}>
+                        Simular visita (solo demo)
+                      </Text>
+
+                      <Text style={themedStyles.visitOptionText}>
+                        Disponible en Expo Go. Usa una ubicación simulada y no verifica el GPS real.
+                      </Text>
+                    </View>
+                  </Pressable>
+                )}
 
                 {/* Manual */}
 
