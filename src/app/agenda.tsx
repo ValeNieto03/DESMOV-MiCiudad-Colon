@@ -51,9 +51,7 @@ export default function AgendaScreen() {
 
     try {
       const [eventosObtenidos, lugaresObtenidos] = await Promise.all([
-        consultarAPI<EventoAPI[]>(
-          '/eventos?desde=2020-01-01&porPagina=100',
-        ),
+        consultarAPI<EventoAPI[]>('/eventos?porPagina=100'),
         consultarAPI<LugarAPI[]>('/lugares?porPagina=500'),
       ]);
 
