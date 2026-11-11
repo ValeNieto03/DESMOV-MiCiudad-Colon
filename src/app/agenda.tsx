@@ -50,14 +50,23 @@ export default function AgendaScreen() {
     setError('');
 
     try {
-      const [eventosObtenidos, lugaresObtenidos, guardadosObtenidos] =
-        await Promise.all([
-          consultarAPI<EventoAPI[]>(
-            '/eventos?desde=2020-01-01&porPagina=100',
-          ),
-          consultarAPI<LugarAPI[]>('/lugares?porPagina=500'),
-          obtenerEventosGuardadosAPI(),
-        ]);
+      const [eventosObtenidos, lugaresObtenidos] = await Promise.all([
+        consultarAPI<EventoAPI[]>(
+          '/eventos?desde=2020-01-01&porPagina=100',
+        ),
+        consultarAPI<LugarAPI[]>('/lugares?porPagina=500'),
+      ]);
+
+      let guardadosObtenidos: EventoAPI[] = [];
+
+      try {
+        guardadosObtenidos = await obtenerEventosGuardadosAPI();
+      } catch (errorGuardados) {
+        console.log(
+          'No se pudieron cargar los eventos personales guardados:',
+          errorGuardados,
+        );
+      }
 
       setEventos(eventosObtenidos);
       setLugares(lugaresObtenidos);
