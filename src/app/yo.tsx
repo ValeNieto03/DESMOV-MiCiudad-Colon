@@ -13,6 +13,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { cerrarSesion, obtenerSesion } from "@/servicios/autenticacion";
+import {
+  obtenerPreferenciaTemaCuenta,
+  guardarPreferenciaTemaCuenta,
+  sincronizarTemaCuentaPendiente,
+} from "@/servicios/preferencia-tema";
 
 import { Usuario } from "@/tipos/usuario";
 
@@ -22,8 +27,13 @@ export default function YoScreen() {
 
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [cargando, setCargando] = useState(true);
-  const { colors, preference, persistenceError, setPreference } =
-    useThemeContext();
+  const {
+    colors,
+    preference,
+    hasLocalPreference,
+    persistenceError,
+    setPreference,
+  } = useThemeContext();
 
   const cargarSesion = useCallback(async () => {
     try {
@@ -33,6 +43,14 @@ export default function YoScreen() {
 
       if (sesion) {
         setUsuario(sesion.usuario);
+
+        if (hasLocalPreference) {
+          void sincronizarTemaCuentaPendiente().catch(() => undefined);
+        } else {
+          void obtenerPreferenciaTemaCuenta().then((temaCuenta) => {
+            if (temaCuenta) setPreference(temaCuenta);
+          });
+        }
       } else {
         setUsuario(null);
       }
@@ -42,7 +60,7 @@ export default function YoScreen() {
     } finally {
       setCargando(false);
     }
-  }, []);
+  }, [hasLocalPreference, setPreference]);
 
   useFocusEffect(
     useCallback(() => {
@@ -115,7 +133,15 @@ export default function YoScreen() {
                   key={opcion.value}
                   accessibilityRole="radio"
                   accessibilityState={{ checked: seleccionada }}
-                  onPress={() => setPreference(opcion.value)}
+                  onPress={() => {
+                    setPreference(opcion.value);
+
+                    if (usuario) {
+                      void guardarPreferenciaTemaCuenta(opcion.value).catch(
+                        () => undefined,
+                      );
+                    }
+                  }}
                   style={[
                     themedStyles.themeOption,
                     {

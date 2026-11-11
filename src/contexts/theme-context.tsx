@@ -21,6 +21,7 @@ type ThemeContextValue = {
   theme: AppTheme;
   colors: (typeof Colors)[AppTheme];
   isReady: boolean;
+  hasLocalPreference: boolean;
   persistenceError: boolean;
   setPreference: (preference: ThemePreference) => void;
 };
@@ -39,6 +40,7 @@ export function ThemeProvider({ children }: PropsWithChildren) {
   const [preference, setPreferenceState] =
     useState<ThemePreference>("sistema");
   const [isReady, setIsReady] = useState(false);
+  const [hasLocalPreference, setHasLocalPreference] = useState(false);
   const [persistenceError, setPersistenceError] = useState(false);
   const writes = useRef<Promise<void>>(Promise.resolve());
 
@@ -53,8 +55,9 @@ export function ThemeProvider({ children }: PropsWithChildren) {
 
         if (isThemePreference(storedPreference)) {
           setPreferenceState(storedPreference);
+          setHasLocalPreference(true);
         } else if (storedPreference !== null) {
-          await Storage.setItemAsync(STORAGE_KEY, "sistema");
+          await Storage.removeItemAsync(STORAGE_KEY);
           setPreferenceState("sistema");
         }
       } catch {
@@ -73,6 +76,7 @@ export function ThemeProvider({ children }: PropsWithChildren) {
 
   const setPreference = useCallback((nextPreference: ThemePreference) => {
     setPreferenceState(nextPreference);
+    setHasLocalPreference(true);
     setPersistenceError(false);
 
     writes.current = writes.current
@@ -98,10 +102,11 @@ export function ThemeProvider({ children }: PropsWithChildren) {
       theme,
       colors: Colors[theme],
       isReady,
+      hasLocalPreference,
       persistenceError,
       setPreference,
     }),
-    [preference, theme, isReady, persistenceError, setPreference],
+    [preference, theme, isReady, hasLocalPreference, persistenceError, setPreference],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
