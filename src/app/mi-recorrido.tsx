@@ -1,12 +1,18 @@
 import { useThemedStyles } from "@/hooks/use-theme";
 import { useCallback, useState } from 'react';
+import * as ImagePicker from 'expo-image-picker';
+import { Directory, File, Paths } from 'expo-file-system';
 import {
+    ActivityIndicator,
+    Alert,
     FlatList,
     Image,
+    Modal,
     Pressable,
     RefreshControl,
     StyleSheet,
     Text,
+    TextInput,
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,6 +25,7 @@ import {
 } from '@/servicios/autenticacion';
 
 import {
+    actualizarRecuerdosVisita,
     obtenerVisitas,
     type Visita,
 } from '@/servicios/visitas';
@@ -27,6 +34,10 @@ export default function MiRecorridoScreen() {
   const themedStyles = useThemedStyles(styles);
     const [visitas, setVisitas] = useState<Visita[]>([]);
     const [actualizando, setActualizando] = useState(false);
+    const [visitaEnEdicion, setVisitaEnEdicion] = useState<Visita | null>(null);
+    const [notaTemporal, setNotaTemporal] = useState('');
+    const [fotoTemporalUri, setFotoTemporalUri] = useState<string | null>(null);
+    const [guardandoRecuerdo, setGuardandoRecuerdo] = useState(false);
 
     // ------------------------------------------
     // Cargar visitas del usuario actual
@@ -105,6 +116,79 @@ export default function MiRecorridoScreen() {
         return lugares.find(
             (item) => item.id === lugarId
         );
+    };
+
+    const editarRecuerdos = (visita: Visita) => {
+        setVisitaEnEdicion(visita);
+        setNotaTemporal(visita.nota ?? '');
+        setFotoTemporalUri(visita.fotoUri);
+    };
+
+    const tomarFotoRecuerdo = async () => {
+        try {
+            const permiso = await ImagePicker.requestCameraPermissionsAsync();
+
+            if (!permiso.granted) {
+                Alert.alert(
+                    'Permiso de cámara necesario',
+                    'Permití el acceso a la cámara para agregar una foto.'
+                );
+                return;
+            }
+
+            const resultado = await ImagePicker.launchCameraAsync({
+                mediaTypes: ['images'],
+                quality: 0.8,
+            });
+
+            if (!resultado.canceled && resultado.assets[0]) {
+                setFotoTemporalUri(resultado.assets[0].uri);
+            }
+        } catch (error) {
+            console.error('Error al tomar una foto del recuerdo:', error);
+            Alert.alert('No se pudo abrir la cámara', 'Intentá nuevamente.');
+        }
+    };
+
+    const guardarRecuerdos = async () => {
+        if (!visitaEnEdicion) return;
+
+        try {
+            setGuardandoRecuerdo(true);
+            let fotoUriGuardada = visitaEnEdicion.fotoUri;
+
+            if (fotoTemporalUri && fotoTemporalUri !== visitaEnEdicion.fotoUri) {
+                const directorio = new Directory(Paths.document, 'visitas');
+
+                if (!directorio.exists) {
+                    directorio.create({ intermediates: true });
+                }
+
+                const fotoTemporal = new File(fotoTemporalUri);
+                const fotoPermanente = new File(
+                    directorio,
+                    `${visitaEnEdicion.id}.jpg`
+                );
+                await fotoTemporal.copy(fotoPermanente, { overwrite: true });
+                fotoUriGuardada = fotoPermanente.uri;
+            }
+
+            actualizarRecuerdosVisita(
+                visitaEnEdicion.id,
+                notaTemporal.trim() || null,
+                fotoUriGuardada
+            );
+            await cargarVisitas();
+            setVisitaEnEdicion(null);
+        } catch (error) {
+            console.error('Error al guardar los recuerdos de la visita:', error);
+            Alert.alert(
+                'No se pudieron guardar',
+                'Revisá el espacio disponible e intentá nuevamente.'
+            );
+        } finally {
+            setGuardandoRecuerdo(false);
+        }
     };
 
     // ------------------------------------------
@@ -325,6 +409,21 @@ export default function MiRecorridoScreen() {
                     </View>
                 )}
 
+                <Pressable
+                    style={themedStyles.editMemoriesButton}
+                    onPress={() => editarRecuerdos(item)}
+                    accessibilityRole="button"
+                    accessibilityLabel={item.nota || item.fotoUri
+                        ? 'Editar nota o foto de la visita'
+                        : 'Agregar nota o foto a la visita'}
+                >
+                    <Text style={themedStyles.editMemoriesButtonText}>
+                        {item.nota || item.fotoUri
+                            ? 'Editar nota o foto'
+                            : 'Agregar nota o foto'}
+                    </Text>
+                </Pressable>
+
             </View>
         );
     };
@@ -401,6 +500,75 @@ export default function MiRecorridoScreen() {
                 />
 
             )}
+
+            <Modal
+                visible={visitaEnEdicion !== null}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setVisitaEnEdicion(null)}
+            >
+                <View style={themedStyles.modalOverlay}>
+                    <View style={themedStyles.modalCard}>
+                        <Text style={themedStyles.modalTitle}>
+                            Un recuerdo de tu visita
+                        </Text>
+                        <Text style={themedStyles.modalSubtitle}>
+                            La nota y la foto son opcionales. Esto no cambia cómo registraste la visita.
+                        </Text>
+
+                        <TextInput
+                            style={themedStyles.noteInput}
+                            value={notaTemporal}
+                            onChangeText={setNotaTemporal}
+                            placeholder="Escribí una nota corta..."
+                            placeholderTextColor="#77736B"
+                            maxLength={160}
+                            multiline
+                            textAlignVertical="top"
+                            accessibilityLabel="Nota opcional de la visita"
+                        />
+
+                        <Pressable
+                            style={themedStyles.cameraButton}
+                            onPress={tomarFotoRecuerdo}
+                            accessibilityRole="button"
+                        >
+                            <Text style={themedStyles.cameraButtonText}>
+                                {fotoTemporalUri ? '📷 Cambiar foto' : '📷 Sacar una foto'}
+                            </Text>
+                        </Pressable>
+
+                        {fotoTemporalUri && (
+                            <Image
+                                source={{ uri: fotoTemporalUri }}
+                                style={themedStyles.previewImage}
+                                resizeMode="cover"
+                                accessibilityLabel="Vista previa de la foto"
+                            />
+                        )}
+
+                        <Pressable
+                            style={themedStyles.saveButton}
+                            onPress={guardarRecuerdos}
+                            disabled={guardandoRecuerdo}
+                        >
+                            {guardandoRecuerdo ? (
+                                <ActivityIndicator color="#FFFFFF" />
+                            ) : (
+                                <Text style={themedStyles.saveButtonText}>Guardar</Text>
+                            )}
+                        </Pressable>
+
+                        <Pressable
+                            style={themedStyles.cancelButton}
+                            onPress={() => setVisitaEnEdicion(null)}
+                            disabled={guardandoRecuerdo}
+                        >
+                            <Text style={themedStyles.cancelButtonText}>Cancelar</Text>
+                        </Pressable>
+                    </View>
+                </View>
+            </Modal>
 
         </SafeAreaView>
     );
@@ -681,6 +849,100 @@ const styles = StyleSheet.create({
     photoText: {
         fontSize: 12,
         color: '#2F7F8F',
+        fontWeight: '700',
+    },
+
+    editMemoriesButton: {
+        marginTop: 12,
+        paddingVertical: 12,
+        borderRadius: 10,
+        backgroundColor: '#DCE9E8',
+        alignItems: 'center',
+    },
+
+    editMemoriesButtonText: {
+        color: '#2F7F8F',
+        fontSize: 14,
+        fontWeight: '700',
+    },
+
+    modalOverlay: {
+        flex: 1,
+        justifyContent: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.45)',
+        padding: 20,
+    },
+
+    modalCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 18,
+        padding: 20,
+        maxHeight: '90%',
+    },
+
+    modalTitle: {
+        color: '#253A32',
+        fontSize: 22,
+        fontWeight: '800',
+    },
+
+    modalSubtitle: {
+        color: '#77736B',
+        marginTop: 8,
+        marginBottom: 14,
+        lineHeight: 20,
+    },
+
+    noteInput: {
+        minHeight: 90,
+        borderWidth: 1,
+        borderColor: '#D8D2C4',
+        borderRadius: 10,
+        padding: 12,
+        color: '#253A32',
+        backgroundColor: '#F7F3E8',
+    },
+
+    cameraButton: {
+        marginTop: 12,
+        padding: 13,
+        backgroundColor: '#DCE9E8',
+        borderRadius: 10,
+        alignItems: 'center',
+    },
+
+    cameraButtonText: {
+        color: '#2F7F8F',
+        fontWeight: '700',
+    },
+
+    previewImage: {
+        height: 150,
+        width: '100%',
+        borderRadius: 10,
+        marginTop: 12,
+    },
+
+    saveButton: {
+        marginTop: 16,
+        padding: 14,
+        backgroundColor: '#28745A',
+        borderRadius: 10,
+        alignItems: 'center',
+    },
+
+    saveButtonText: {
+        color: '#FFFFFF',
+        fontWeight: '800',
+    },
+
+    cancelButton: {
+        padding: 12,
+        alignItems: 'center',
+    },
+
+    cancelButtonText: {
+        color: '#77736B',
         fontWeight: '700',
     },
 

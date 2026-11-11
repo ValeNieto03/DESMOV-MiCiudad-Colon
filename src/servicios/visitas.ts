@@ -76,6 +76,24 @@ export function guardarVisita(visita: Visita) {
   console.log('VISITA GUARDADA EN SQLITE:', visita);
 }
 
+// Actualiza los recuerdos sin modificar los datos del registro de la visita.
+export function actualizarRecuerdosVisita(
+  id: string,
+  nota: string | null,
+  fotoUri: string | null
+) {
+  db.runSync(
+    `
+      UPDATE visitas
+      SET nota = ?, fotoUri = ?
+      WHERE id = ?;
+    `,
+    nota,
+    fotoUri,
+    id
+  );
+}
+
 // --------------------------------------------------
 // OBTENER VISITAS
 // --------------------------------------------------
