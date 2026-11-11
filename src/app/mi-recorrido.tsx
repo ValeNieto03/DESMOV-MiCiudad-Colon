@@ -312,7 +312,12 @@ export default function MiRecorridoScreen() {
                 {/* Foto de la visita */}
                 {item.fotoUri && (
                     <View style={themedStyles.photoContainer}>
-
+                        <Image
+                            source={{ uri: item.fotoUri }}
+                            style={themedStyles.photoImage}
+                            resizeMode="cover"
+                            accessibilityLabel="Foto de la visita"
+                        />
                         <Text style={themedStyles.photoText}>
                             Foto de la visita guardada
                         </Text>
@@ -664,6 +669,13 @@ const styles = StyleSheet.create({
         padding: 10,
         backgroundColor: '#DCE9E8',
         borderRadius: 10,
+    },
+
+    photoImage: {
+        width: '100%',
+        height: 180,
+        borderRadius: 8,
+        marginBottom: 8,
     },
 
     photoText: {

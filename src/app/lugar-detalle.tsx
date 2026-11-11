@@ -1,4 +1,7 @@
 import { useThemedStyles } from "@/hooks/use-theme";
+import { useThemeContext } from '@/contexts/theme-context';
+import { Directory, File, Paths } from 'expo-file-system';
+import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -7,6 +10,7 @@ import {
   Linking,
   Modal,
   Pressable,
+  TextInput,
   ScrollView,
   StyleSheet,
   Text,
@@ -61,6 +65,7 @@ const MODO_PRUEBA_GPS = true;
 
 export default function LugarDetalleScreen() {
   const themedStyles = useThemedStyles(styles);
+  const { colors } = useThemeContext();
   const router = useRouter();
 
   const { id } = useLocalSearchParams<{
@@ -164,6 +169,12 @@ export default function LugarDetalleScreen() {
     useState(false);
 
   const [mostrarOpcionesVisita, setMostrarOpcionesVisita] =
+    useState(false);
+  const [mostrarFormularioVisita, setMostrarFormularioVisita] =
+    useState(false);
+  const [notaVisita, setNotaVisita] = useState('');
+  const [fotoVisita, setFotoVisita] = useState<string | null>(null);
+  const [guardandoVisitaManual, setGuardandoVisitaManual] =
     useState(false);
 
   // --------------------------------------------------
@@ -415,6 +426,50 @@ export default function LugarDetalleScreen() {
   // REGISTRO MANUAL DE VISITA
   // --------------------------------------------------
 
+  const tomarFotoVisita = async () => {
+    try {
+      const permiso = await ImagePicker.requestCameraPermissionsAsync();
+
+      if (!permiso.granted) {
+        Alert.alert(
+          'Permiso de cámara necesario',
+          'Permití el acceso a la cámara para adjuntar una foto a la visita.'
+        );
+        return;
+      }
+
+      const resultado = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        quality: 0.8,
+      });
+
+      if (!resultado.canceled && resultado.assets[0]) {
+        setFotoVisita(resultado.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error al tomar la foto de la visita:', error);
+      Alert.alert('No se pudo abrir la cámara', 'Intentá nuevamente.');
+    }
+  };
+
+  const guardarFotoEnElTelefono = async (
+    uriTemporal: string,
+    idVisita: string
+  ) => {
+    const directorio = new Directory(Paths.document, 'visitas');
+
+    if (!directorio.exists) {
+      directorio.create({ intermediates: true });
+    }
+
+    const fotoTemporal = new File(uriTemporal);
+    const fotoPermanente = new File(directorio, `${idVisita}.jpg`);
+
+    await fotoTemporal.copy(fotoPermanente, { overwrite: true });
+
+    return fotoPermanente.uri;
+  };
+
   const registrarVisitaManual = async () => {
     if (!lugar) return;
 
@@ -428,6 +483,7 @@ export default function LugarDetalleScreen() {
     }
 
     try {
+      setGuardandoVisitaManual(true);
       const usuario = await obtenerUsuarioActual();
 
       if (!usuario) {
@@ -439,19 +495,25 @@ export default function LugarDetalleScreen() {
         return;
       }
 
+      const idVisita = `vis-${Date.now()}`;
+      const fotoUriGuardada = fotoVisita
+        ? await guardarFotoEnElTelefono(fotoVisita, idVisita)
+        : null;
+
       const nuevaVisita: Visita = {
-        id: `vis-${Date.now()}`,
+        id: idVisita,
         usuarioId: usuario.id,
         lugarId: lugar.id,
         fechaHora: new Date().toISOString(),
         origen: 'manual',
-        fotoUri: null,
-        nota: null,
+        fotoUri: fotoUriGuardada,
+        nota: notaVisita.trim() || null,
         sincronizada: false,
       };
 
       await guardarVisita(nuevaVisita);
       setVisitaRegistrada(true);
+      setMostrarFormularioVisita(false);
 
       Alert.alert(
         'Visita agregada',
@@ -463,6 +525,8 @@ export default function LugarDetalleScreen() {
         'No se pudo guardar la visita',
         'Intentá nuevamente en unos segundos.'
       );
+    } finally {
+      setGuardandoVisitaManual(false);
     }
   };
 
@@ -1078,7 +1142,9 @@ export default function LugarDetalleScreen() {
                   style={themedStyles.visitOption}
                   onPress={() => {
                     setMostrarOpcionesVisita(false);
-                    registrarVisitaManual();
+                    setNotaVisita('');
+                    setFotoVisita(null);
+                    setMostrarFormularioVisita(true);
                   }}
                 >
                   <Text style={themedStyles.visitOptionIcon}>
@@ -1091,7 +1157,7 @@ export default function LugarDetalleScreen() {
                     </Text>
 
                     <Text style={themedStyles.visitOptionText}>
-                      Guarda la visita sin comprobar tu ubicación.
+                      Agregá una nota o una foto sin comprobar tu ubicación.
                     </Text>
                   </View>
                 </Pressable>
@@ -1105,6 +1171,87 @@ export default function LugarDetalleScreen() {
                   <Text style={themedStyles.modalCancelText}>
                     Cancelar
                   </Text>
+                </Pressable>
+              </View>
+            </View>
+          </Modal>
+
+          <Modal
+            visible={mostrarFormularioVisita}
+            transparent
+            animationType="slide"
+            onRequestClose={() => setMostrarFormularioVisita(false)}
+          >
+            <View style={themedStyles.modalOverlay}>
+              <View style={themedStyles.modalCard}>
+                <Text style={themedStyles.modalTitle}>
+                  Registrar visita
+                </Text>
+
+                <Text style={themedStyles.modalSubtitle}>
+                  {lugar.nombre}. La nota y la foto son opcionales.
+                </Text>
+
+                <TextInput
+                  style={themedStyles.visitNoteInput}
+                  value={notaVisita}
+                  onChangeText={setNotaVisita}
+                  placeholder="Escribí una nota corta..."
+                  placeholderTextColor={colors.textSecondary}
+                  maxLength={160}
+                  multiline
+                  textAlignVertical="top"
+                  accessibilityLabel="Nota opcional de la visita"
+                />
+
+                <Pressable
+                  style={themedStyles.visitOption}
+                  onPress={tomarFotoVisita}
+                  accessibilityRole="button"
+                >
+                  <Text style={themedStyles.visitOptionIcon}>📷</Text>
+                  <View style={themedStyles.visitOptionContent}>
+                    <Text style={themedStyles.visitOptionTitle}>
+                      {fotoVisita ? 'Volver a sacar la foto' : 'Sacar una foto'}
+                    </Text>
+                    <Text style={themedStyles.visitOptionText}>
+                      La foto se guarda en este teléfono.
+                    </Text>
+                  </View>
+                </Pressable>
+
+                {fotoVisita && (
+                  <Image
+                    source={{ uri: fotoVisita }}
+                    style={themedStyles.visitPhotoPreview}
+                    resizeMode="cover"
+                    accessibilityLabel="Vista previa de la foto de la visita"
+                  />
+                )}
+
+                <Pressable
+                  style={[
+                    themedStyles.primaryButton,
+                    guardandoVisitaManual && themedStyles.disabledButton,
+                  ]}
+                  onPress={registrarVisitaManual}
+                  disabled={guardandoVisitaManual}
+                >
+                  {guardandoVisitaManual ? (
+                    <ActivityIndicator color={colors.onPrimary} />
+                  ) : (
+                    <Text style={themedStyles.primaryButtonText}>
+                      Guardar en mi recorrido
+                    </Text>
+                  )}
+                </Pressable>
+
+                <Pressable
+                  style={themedStyles.modalCancelButton}
+                  onPress={() => setMostrarFormularioVisita(false)}
+                  disabled={guardandoVisitaManual}
+                >
+                  <Text style={themedStyles.modalCancelText}>Cancelar</Text>
                 </Pressable>
               </View>
             </View>
@@ -1537,6 +1684,29 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     color: '#77736B',
     marginTop: 3,
+  },
+
+  visitNoteInput: {
+    minHeight: 96,
+    borderWidth: 1,
+    borderColor: '#D8E4E2',
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    color: '#253A32',
+    fontSize: 15,
+    padding: 12,
+    marginBottom: 12,
+  },
+
+  visitPhotoPreview: {
+    width: '100%',
+    height: 180,
+    borderRadius: 14,
+    marginBottom: 12,
+  },
+
+  disabledButton: {
+    opacity: 0.6,
   },
 
   modalCancelButton: {
