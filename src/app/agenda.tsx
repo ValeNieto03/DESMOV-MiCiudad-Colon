@@ -85,13 +85,18 @@ export default function AgendaScreen() {
     cargarAgenda();
   }, [cargarAgenda]);
 
+  const ahora = Date.now();
   const eventosFuturos = eventos
-    .filter(
-      (evento) =>
-        (evento.estado === 'programado' ||
-          evento.estado === 'suspendido') &&
-        new Date(evento.inicio).getTime() >= Date.now(),
-    )
+    .filter((evento) => {
+      const estadoVisible =
+        evento.estado === 'programado' || evento.estado === 'suspendido';
+      const inicioPendiente = new Date(evento.inicio).getTime() >= ahora;
+      const sigueEnCurso = evento.fin
+        ? new Date(evento.fin).getTime() >= ahora
+        : evento.estado === 'programado';
+
+      return estadoVisible && (inicioPendiente || sigueEnCurso);
+    })
     .sort(
       (a, b) =>
         new Date(a.inicio).getTime() -
