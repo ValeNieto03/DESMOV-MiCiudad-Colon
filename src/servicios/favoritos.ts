@@ -4,8 +4,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { consultarAPI } from '@/servicios/api';
 
 const FAVORITOS_KEY = 'mi-ciudad-favoritos';
+const OPERACIONES_PENDIENTES_KEY = 'mi-ciudad-favoritos-pendientes';
 
 type FavoritosPorUsuario = Record<string, string[]>;
+type OperacionesPendientes = Record<string, Record<string, boolean>>;
 
 export interface FavoritoAPI {
     id: string;
@@ -54,6 +56,106 @@ async function guardarFavoritos(
     );
 }
 
+async function obtenerOperacionesPendientes(): Promise<OperacionesPendientes> {
+    const guardadas = await AsyncStorage.getItem(OPERACIONES_PENDIENTES_KEY);
+
+    if (!guardadas) return {};
+
+    try {
+        return JSON.parse(guardadas) as OperacionesPendientes;
+    } catch {
+        return {};
+    }
+}
+
+async function guardarOperacionesPendientes(
+    operaciones: OperacionesPendientes,
+): Promise<void> {
+    await AsyncStorage.setItem(
+        OPERACIONES_PENDIENTES_KEY,
+        JSON.stringify(operaciones),
+    );
+}
+
+function esErrorDeConexion(error: unknown): boolean {
+    return error instanceof Error && error.message === 'API_NO_DISPONIBLE';
+}
+
+async function enviarOperacion(
+    lugarId: string,
+    guardar: boolean,
+): Promise<void> {
+    await consultarAPI(
+        `/yo/favoritos/${encodeURIComponent(lugarId)}`,
+        { method: guardar ? 'PUT' : 'DELETE' },
+        true,
+    );
+}
+
+async function quitarOperacionPendiente(
+    usuarioId: string,
+    lugarId: string,
+): Promise<void> {
+    const operaciones = await obtenerOperacionesPendientes();
+    delete operaciones[usuarioId]?.[lugarId];
+
+    if (operaciones[usuarioId] && Object.keys(operaciones[usuarioId]).length === 0) {
+        delete operaciones[usuarioId];
+    }
+
+    await guardarOperacionesPendientes(operaciones);
+}
+
+async function sincronizarOperacionesPendientes(usuarioId: string): Promise<void> {
+    const operaciones = await obtenerOperacionesPendientes();
+    const delUsuario = operaciones[usuarioId] ?? {};
+
+    for (const [lugarId, guardar] of Object.entries(delUsuario)) {
+        try {
+            await enviarOperacion(lugarId, guardar);
+            await quitarOperacionPendiente(usuarioId, lugarId);
+        } catch (error) {
+            if (esErrorDeConexion(error)) return;
+            throw error;
+        }
+    }
+}
+
+async function actualizarFavoritoLocal(
+    usuarioId: string,
+    lugarId: string,
+    guardar: boolean,
+): Promise<void> {
+    const favoritos = await obtenerFavoritosGuardados();
+    const operaciones = await obtenerOperacionesPendientes();
+    const favoritosAnteriores = { ...favoritos };
+    const operacionesAnteriores = JSON.parse(JSON.stringify(operaciones)) as OperacionesPendientes;
+    const favoritosUsuario = new Set(favoritos[usuarioId] ?? []);
+
+    if (guardar) favoritosUsuario.add(lugarId);
+    else favoritosUsuario.delete(lugarId);
+
+    favoritos[usuarioId] = Array.from(favoritosUsuario);
+    operaciones[usuarioId] = {
+        ...(operaciones[usuarioId] ?? {}),
+        [lugarId]: guardar,
+    };
+
+    await guardarFavoritos(favoritos);
+    await guardarOperacionesPendientes(operaciones);
+
+    try {
+        await enviarOperacion(lugarId, guardar);
+        await quitarOperacionPendiente(usuarioId, lugarId);
+    } catch (error) {
+        if (esErrorDeConexion(error)) return;
+
+        await guardarFavoritos(favoritosAnteriores);
+        await guardarOperacionesPendientes(operacionesAnteriores);
+        throw error;
+    }
+}
+
 // ------------------------------------------
 // Actualizar respaldo local
 // ------------------------------------------
@@ -78,6 +180,8 @@ export async function obtenerFavoritos(
     usuarioId: string,
 ): Promise<string[]> {
     try {
+        await sincronizarOperacionesPendientes(usuarioId);
+
         const favoritosAPI = await consultarAPI<FavoritoAPI[]>(
             '/yo/favoritos',
             {},
@@ -86,9 +190,19 @@ export async function obtenerFavoritos(
 
         console.log('⭐ Favoritos recibidos del backend:', favoritosAPI);
 
-        const lugarIds = favoritosAPI.map(
+        const favoritosRemotos = new Set(favoritosAPI.map(
             (favorito) => favorito.lugarId,
-        );
+        ));
+        const operacionesPendientes = await obtenerOperacionesPendientes();
+
+        for (const [lugarId, guardar] of Object.entries(
+            operacionesPendientes[usuarioId] ?? {},
+        )) {
+            if (guardar) favoritosRemotos.add(lugarId);
+            else favoritosRemotos.delete(lugarId);
+        }
+
+        const lugarIds = Array.from(favoritosRemotos);
 
         console.log('⭐ IDs de lugares favoritos:', lugarIds);
 
@@ -131,25 +245,7 @@ export async function agregarFavorito(
     usuarioId: string,
     lugarId: string,
 ): Promise<void> {
-    await consultarAPI(
-        `/yo/favoritos/${encodeURIComponent(lugarId)}`,
-        {
-            method: 'PUT',
-        },
-        true,
-    );
-
-    const favoritos = await obtenerFavoritosGuardados();
-    const favoritosUsuario = favoritos[usuarioId] ?? [];
-
-    if (!favoritosUsuario.includes(lugarId)) {
-        favoritos[usuarioId] = [
-            ...favoritosUsuario,
-            lugarId,
-        ];
-
-        await guardarFavoritos(favoritos);
-    }
+    await actualizarFavoritoLocal(usuarioId, lugarId, true);
 }
 
 // ------------------------------------------
@@ -160,21 +256,7 @@ export async function eliminarFavorito(
     usuarioId: string,
     lugarId: string,
 ): Promise<void> {
-    await consultarAPI(
-        `/yo/favoritos/${encodeURIComponent(lugarId)}`,
-        {
-            method: 'DELETE',
-        },
-        true,
-    );
-
-    const favoritos = await obtenerFavoritosGuardados();
-
-    favoritos[usuarioId] = (
-        favoritos[usuarioId] ?? []
-    ).filter((id) => id !== lugarId);
-
-    await guardarFavoritos(favoritos);
+    await actualizarFavoritoLocal(usuarioId, lugarId, false);
 }
 
 // ------------------------------------------
