@@ -1,3 +1,4 @@
+import { useThemedStyles } from "@/hooks/use-theme";
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -59,6 +60,7 @@ import {
 const MODO_PRUEBA_GPS = true;
 
 export default function LugarDetalleScreen() {
+  const themedStyles = useThemedStyles(styles);
   const router = useRouter();
 
   const { id } = useLocalSearchParams<{
@@ -681,15 +683,15 @@ export default function LugarDetalleScreen() {
 
   if (!lugar && cargandoLugar) {
     return (
-      <View style={styles.screen}>
-        <SafeAreaView style={styles.container}>
-          <View style={styles.errorContainer}>
+      <View style={themedStyles.screen}>
+        <SafeAreaView style={themedStyles.container}>
+          <View style={themedStyles.errorContainer}>
             <ActivityIndicator
               size="large"
               color="#2F7F8F"
             />
 
-            <Text style={styles.loadingText}>
+            <Text style={themedStyles.loadingText}>
               Cargando información del lugar...
             </Text>
           </View>
@@ -704,24 +706,24 @@ export default function LugarDetalleScreen() {
 
   if (!lugar) {
     return (
-      <View style={styles.screen}>
-        <SafeAreaView style={styles.container}>
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorIcon}>📍</Text>
+      <View style={themedStyles.screen}>
+        <SafeAreaView style={themedStyles.container}>
+          <View style={themedStyles.errorContainer}>
+            <Text style={themedStyles.errorIcon}>📍</Text>
 
-            <Text style={styles.errorTitle}>
+            <Text style={themedStyles.errorTitle}>
               Lugar no encontrado
             </Text>
 
-            <Text style={styles.errorText}>
+            <Text style={themedStyles.errorText}>
               No pudimos encontrar la información de este lugar.
             </Text>
 
             <Pressable
-              style={styles.backButtonLarge}
+              style={themedStyles.backButtonLarge}
               onPress={() => router.back()}
             >
-              <Text style={styles.backButtonText}>
+              <Text style={themedStyles.backButtonText}>
                 Volver
               </Text>
             </Pressable>
@@ -736,38 +738,38 @@ export default function LugarDetalleScreen() {
   // --------------------------------------------------
 
   return (
-    <View style={styles.screen}>
-      <SafeAreaView style={styles.container}>
+    <View style={themedStyles.screen}>
+      <SafeAreaView style={themedStyles.container}>
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={themedStyles.scrollContent}
         >
           {/* Encabezado */}
 
-          <View style={styles.header}>
+          <View style={themedStyles.header}>
             <Pressable
-              style={styles.backButton}
+              style={themedStyles.backButton}
               onPress={() => router.back()}
             >
-              <Text style={styles.backIcon}>‹</Text>
+              <Text style={themedStyles.backIcon}>‹</Text>
             </Pressable>
 
-            <Text style={styles.headerTitle}>
+            <Text style={themedStyles.headerTitle}>
               Detalle
             </Text>
 
             <Pressable
               style={[
-                styles.favoriteButton,
-                favorito && styles.favoriteButtonActive,
+                themedStyles.favoriteButton,
+                favorito && themedStyles.favoriteButtonActive,
               ]}
               onPress={manejarFavorito}
               disabled={cargandoFavorito}
             >
               <Text
                 style={[
-                  styles.favoriteIcon,
-                  favorito && styles.favoriteIconActive,
+                  themedStyles.favoriteIcon,
+                  favorito && themedStyles.favoriteIconActive,
                 ]}
               >
                 {favorito ? '♥' : '♡'}
@@ -777,15 +779,15 @@ export default function LugarDetalleScreen() {
 
           {/* Imagen principal */}
 
-          <View style={styles.hero}>
+          <View style={themedStyles.hero}>
             {lugar.imagen ? (
               <Image
                 source={lugar.imagen}
-                style={styles.heroImage}
+                style={themedStyles.heroImage}
                 resizeMode="cover"
               />
             ) : (
-              <Text style={styles.heroIcon}>
+              <Text style={themedStyles.heroIcon}>
                 {lugar.icono}
               </Text>
             )}
@@ -793,68 +795,68 @@ export default function LugarDetalleScreen() {
 
           {/* Categoría */}
 
-          <View style={styles.categoryBadge}>
-            <Text style={styles.categoryText}>
+          <View style={themedStyles.categoryBadge}>
+            <Text style={themedStyles.categoryText}>
               {lugar.categoria}
             </Text>
           </View>
 
           {/* Título */}
 
-          <Text style={styles.title}>
+          <Text style={themedStyles.title}>
             {lugar.nombre}
           </Text>
 
           {/* Descripción */}
 
-          <Text style={styles.description}>
+          <Text style={themedStyles.description}>
             {lugar.descripcion}
           </Text>
 
           {/* Información */}
 
-          <View style={styles.infoCard}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoIcon}>📍</Text>
+          <View style={themedStyles.infoCard}>
+            <View style={themedStyles.infoRow}>
+              <Text style={themedStyles.infoIcon}>📍</Text>
 
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>
+              <View style={themedStyles.infoContent}>
+                <Text style={themedStyles.infoLabel}>
                   Dirección
                 </Text>
 
-                <Text style={styles.infoValue}>
+                <Text style={themedStyles.infoValue}>
                   {lugar.direccion}
                 </Text>
               </View>
             </View>
 
-            <View style={styles.separator} />
+            <View style={themedStyles.separator} />
 
-            <View style={styles.infoRow}>
-              <Text style={styles.infoIcon}>🕐</Text>
+            <View style={themedStyles.infoRow}>
+              <Text style={themedStyles.infoIcon}>🕐</Text>
 
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>
+              <View style={themedStyles.infoContent}>
+                <Text style={themedStyles.infoLabel}>
                   Horarios
                 </Text>
 
-                <Text style={styles.infoValue}>
+                <Text style={themedStyles.infoValue}>
                   {lugar.horario}
                 </Text>
               </View>
             </View>
 
-            <View style={styles.separator} />
+            <View style={themedStyles.separator} />
 
-            <View style={styles.infoRow}>
-              <Text style={styles.infoIcon}>💰</Text>
+            <View style={themedStyles.infoRow}>
+              <Text style={themedStyles.infoIcon}>💰</Text>
 
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>
+              <View style={themedStyles.infoContent}>
+                <Text style={themedStyles.infoLabel}>
                   Entrada
                 </Text>
 
-                <Text style={styles.infoValue}>
+                <Text style={themedStyles.infoValue}>
                   {lugar.precio}
                 </Text>
               </View>
@@ -863,29 +865,29 @@ export default function LugarDetalleScreen() {
 
           {/* Acciones */}
 
-          <View style={styles.actions}>
+          <View style={themedStyles.actions}>
             <Pressable
-              style={styles.primaryButton}
+              style={themedStyles.primaryButton}
               onPress={abrirRuta}
             >
-              <Text style={styles.primaryButtonIcon}>
+              <Text style={themedStyles.primaryButtonIcon}>
                 🧭
               </Text>
 
-              <Text style={styles.primaryButtonText}>
+              <Text style={themedStyles.primaryButtonText}>
                 Cómo llegar
               </Text>
             </Pressable>
 
             <Pressable
-              style={styles.secondaryButton}
+              style={themedStyles.secondaryButton}
               onPress={alternarAudio}
             >
-              <Text style={styles.secondaryButtonIcon}>
+              <Text style={themedStyles.secondaryButtonIcon}>
                 {audioStatus.playing ? '⏸️' : '🎧'}
               </Text>
 
-              <Text style={styles.secondaryButtonText}>
+              <Text style={themedStyles.secondaryButtonText}>
                 {audioStatus.playing ? 'Pausar' : 'Audioguía'}
               </Text>
             </Pressable>
@@ -896,16 +898,16 @@ export default function LugarDetalleScreen() {
           {transcripcionParaMostrar && (
             <>
               <Pressable
-                style={styles.transcriptionButton}
+                style={themedStyles.transcriptionButton}
                 onPress={() =>
                   setMostrarTranscripcion(!mostrarTranscripcion)
                 }
               >
-                <Text style={styles.transcriptionButtonIcon}>
+                <Text style={themedStyles.transcriptionButtonIcon}>
                   📄
                 </Text>
 
-                <Text style={styles.transcriptionButtonText}>
+                <Text style={themedStyles.transcriptionButtonText}>
                   {mostrarTranscripcion
                     ? 'Ocultar transcripción'
                     : 'Ver transcripción'}
@@ -913,12 +915,12 @@ export default function LugarDetalleScreen() {
               </Pressable>
 
               {mostrarTranscripcion && (
-                <View style={styles.transcriptionCard}>
-                  <Text style={styles.transcriptionTitle}>
+                <View style={themedStyles.transcriptionCard}>
+                  <Text style={themedStyles.transcriptionTitle}>
                     Transcripción de la audioguía
                   </Text>
 
-                  <Text style={styles.transcriptionText}>
+                  <Text style={themedStyles.transcriptionText}>
                     {transcripcionParaMostrar}
                   </Text>
                 </View>
@@ -929,14 +931,14 @@ export default function LugarDetalleScreen() {
           {/* Registrar visita */}
 
           <Pressable
-            style={styles.visitButton}
+            style={themedStyles.visitButton}
             onPress={abrirRegistroDeVisita}
           >
-            <Text style={styles.visitButtonIcon}>
+            <Text style={themedStyles.visitButtonIcon}>
               {visitaRegistrada ? '✓' : '📍'}
             </Text>
 
-            <Text style={styles.visitButtonText}>
+            <Text style={themedStyles.visitButtonText}>
               {visitaRegistrada
                 ? 'Visita registrada'
                 : 'Registrar visita'}
@@ -951,20 +953,20 @@ export default function LugarDetalleScreen() {
             animationType="slide"
             onRequestClose={() => setMostrarOpcionesVisita(false)}
           >
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalCard}>
-                <Text style={styles.modalTitle}>
+            <View style={themedStyles.modalOverlay}>
+              <View style={themedStyles.modalCard}>
+                <Text style={themedStyles.modalTitle}>
                   Registrar visita
                 </Text>
 
-                <Text style={styles.modalSubtitle}>
+                <Text style={themedStyles.modalSubtitle}>
                   ¿Cómo querés registrar tu visita?
                 </Text>
 
                 {/* QR */}
 
                 <Pressable
-                  style={styles.visitOption}
+                  style={themedStyles.visitOption}
                   onPress={() => {
                     setMostrarOpcionesVisita(false);
 
@@ -976,16 +978,16 @@ export default function LugarDetalleScreen() {
                     });
                   }}
                 >
-                  <Text style={styles.visitOptionIcon}>
+                  <Text style={themedStyles.visitOptionIcon}>
                     📷
                   </Text>
 
-                  <View style={styles.visitOptionContent}>
-                    <Text style={styles.visitOptionTitle}>
+                  <View style={themedStyles.visitOptionContent}>
+                    <Text style={themedStyles.visitOptionTitle}>
                       Escanear código QR
                     </Text>
 
-                    <Text style={styles.visitOptionText}>
+                    <Text style={themedStyles.visitOptionText}>
                       Escaneá el código que se encuentra en el lugar.
                     </Text>
                   </View>
@@ -994,22 +996,22 @@ export default function LugarDetalleScreen() {
                 {/* GPS */}
 
                 <Pressable
-                  style={styles.visitOption}
+                  style={themedStyles.visitOption}
                   onPress={() => {
                     setMostrarOpcionesVisita(false);
                     registrarVisita();
                   }}
                 >
-                  <Text style={styles.visitOptionIcon}>
+                  <Text style={themedStyles.visitOptionIcon}>
                     📍
                   </Text>
 
-                  <View style={styles.visitOptionContent}>
-                    <Text style={styles.visitOptionTitle}>
+                  <View style={themedStyles.visitOptionContent}>
+                    <Text style={themedStyles.visitOptionTitle}>
                       Estoy en este lugar
                     </Text>
 
-                    <Text style={styles.visitOptionText}>
+                    <Text style={themedStyles.visitOptionText}>
                       Comprobar tu ubicación mediante GPS.
                     </Text>
                   </View>
@@ -1018,7 +1020,7 @@ export default function LugarDetalleScreen() {
                 {/* Manual */}
 
                 <Pressable
-                  style={styles.visitOption}
+                  style={themedStyles.visitOption}
                   onPress={() => {
                     setMostrarOpcionesVisita(false);
 
@@ -1028,16 +1030,16 @@ export default function LugarDetalleScreen() {
                     );
                   }}
                 >
-                  <Text style={styles.visitOptionIcon}>
+                  <Text style={themedStyles.visitOptionIcon}>
                     ✏️
                   </Text>
 
-                  <View style={styles.visitOptionContent}>
-                    <Text style={styles.visitOptionTitle}>
+                  <View style={themedStyles.visitOptionContent}>
+                    <Text style={themedStyles.visitOptionTitle}>
                       Registrar manualmente
                     </Text>
 
-                    <Text style={styles.visitOptionText}>
+                    <Text style={themedStyles.visitOptionText}>
                       Elegí esta opción si querés registrar la visita manualmente.
                     </Text>
                   </View>
@@ -1046,10 +1048,10 @@ export default function LugarDetalleScreen() {
                 {/* Cancelar */}
 
                 <Pressable
-                  style={styles.modalCancelButton}
+                  style={themedStyles.modalCancelButton}
                   onPress={() => setMostrarOpcionesVisita(false)}
                 >
-                  <Text style={styles.modalCancelText}>
+                  <Text style={themedStyles.modalCancelText}>
                     Cancelar
                   </Text>
                 </Pressable>
@@ -1061,19 +1063,19 @@ export default function LugarDetalleScreen() {
 
           {lugar.telefono && (
             <Pressable
-              style={styles.contactButton}
+              style={themedStyles.contactButton}
               onPress={llamar}
             >
-              <Text style={styles.contactButtonIcon}>
+              <Text style={themedStyles.contactButtonIcon}>
                 📞
               </Text>
 
-              <View style={styles.contactButtonContent}>
-                <Text style={styles.contactButtonLabel}>
+              <View style={themedStyles.contactButtonContent}>
+                <Text style={themedStyles.contactButtonLabel}>
                   Teléfono
                 </Text>
 
-                <Text style={styles.contactButtonText}>
+                <Text style={themedStyles.contactButtonText}>
                   {lugar.telefono}
                 </Text>
               </View>
@@ -1084,19 +1086,19 @@ export default function LugarDetalleScreen() {
 
           {lugar.web && (
             <Pressable
-              style={styles.contactButton}
+              style={themedStyles.contactButton}
               onPress={abrirWeb}
             >
-              <Text style={styles.contactButtonIcon}>
+              <Text style={themedStyles.contactButtonIcon}>
                 🌐
               </Text>
 
-              <View style={styles.contactButtonContent}>
-                <Text style={styles.contactButtonLabel}>
+              <View style={themedStyles.contactButtonContent}>
+                <Text style={themedStyles.contactButtonLabel}>
                   Sitio web
                 </Text>
 
-                <Text style={styles.contactButtonText}>
+                <Text style={themedStyles.contactButtonText}>
                   Visitar sitio oficial
                 </Text>
               </View>

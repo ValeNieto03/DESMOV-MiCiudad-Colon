@@ -12,6 +12,8 @@ import {
     View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { useThemedStyles } from '@/hooks/use-theme';
+import { useThemeContext } from '@/contexts/theme-context';
 
 import {
     consultarAPI,
@@ -114,6 +116,8 @@ export default function EventosAdminPanel({
     lugares,
     onRecargar,
 }: Props) {
+    const { colors } = useThemeContext();
+    const themedStyles = useThemedStyles(styles);
     const [modo, setModo] = useState<ModoFormulario | null>(null);
     // --------------------------------------------------
     // FILTROS DE EVENTOS
@@ -602,9 +606,9 @@ export default function EventosAdminPanel({
     ) {
         return (
             <View>
-                <Text style={styles.etiqueta}>{etiqueta}</Text>
+                <Text style={themedStyles.etiqueta}>{etiqueta}</Text>
                 <TextInput
-                    style={styles.campo}
+                    style={themedStyles.campo}
                     value={valor}
                     onChangeText={cambiar}
                     placeholder={placeholder}
@@ -623,20 +627,20 @@ export default function EventosAdminPanel({
         ];
 
         return (
-            <View style={styles.filaOpciones}>
+            <View style={themedStyles.filaOpciones}>
                 {opciones.map(([valor, nombre]) => (
                     <Pressable
                         key={valor}
                         style={[
-                            styles.botonOpcion,
-                            estado === valor && styles.botonOpcionActivo,
+                            themedStyles.botonOpcion,
+                            estado === valor && themedStyles.botonOpcionActivo,
                         ]}
                         onPress={() => setEstado(valor)}
                     >
                         <Text
                             style={[
-                                styles.textoOpcion,
-                                estado === valor && styles.textoOpcionActivo,
+                                themedStyles.textoOpcion,
+                                estado === valor && themedStyles.textoOpcionActivo,
                             ]}
                         >
                             {nombre}
@@ -652,29 +656,29 @@ export default function EventosAdminPanel({
             {!modo ? (
                 <>
                     <Pressable
-                        style={styles.botonPrincipal}
+                        style={themedStyles.botonPrincipal}
                         onPress={abrirNuevoEvento}
                     >
-                        <Text style={styles.textoBoton}>+ Crear nuevo evento</Text>
+                        <Text style={themedStyles.textoBoton}>+ Crear nuevo evento</Text>
                     </Pressable>
 
                     {/* FILTROS DE EVENTOS */}
 
-                    <View style={styles.tarjeta}>
-                        <Text style={styles.tituloTarjeta}>
+                    <View style={themedStyles.tarjeta}>
+                        <Text style={themedStyles.tituloTarjeta}>
                             Buscar y filtrar eventos
                         </Text>
 
                         <TextInput
-                            style={styles.campo}
+                            style={themedStyles.campo}
                             value={busquedaEvento}
                             onChangeText={setBusquedaEvento}
                             placeholder="Buscar por nombre o descripción..."
                         />
 
-                        <Text style={styles.etiqueta}>Estado</Text>
+                        <Text style={themedStyles.etiqueta}>Estado</Text>
 
-                        <View style={styles.filaOpciones}>
+                        <View style={themedStyles.filaOpciones}>
                             {(
                                 [
                                     ['todos', 'Todos'],
@@ -687,15 +691,15 @@ export default function EventosAdminPanel({
                                 <Pressable
                                     key={valor}
                                     style={[
-                                        styles.botonOpcion,
-                                        filtroEstado === valor && styles.botonOpcionActivo,
+                                        themedStyles.botonOpcion,
+                                        filtroEstado === valor && themedStyles.botonOpcionActivo,
                                     ]}
                                     onPress={() => setFiltroEstado(valor)}
                                 >
                                     <Text
                                         style={[
-                                            styles.textoOpcion,
-                                            filtroEstado === valor && styles.textoOpcionActivo,
+                                            themedStyles.textoOpcion,
+                                            filtroEstado === valor && themedStyles.textoOpcionActivo,
                                         ]}
                                     >
                                         {nombre}
@@ -704,20 +708,20 @@ export default function EventosAdminPanel({
                             ))}
                         </View>
 
-                        <Text style={styles.etiqueta}>Lugar o dirección</Text>
+                        <Text style={themedStyles.etiqueta}>Lugar o dirección</Text>
 
                         <TextInput
-                            style={styles.campo}
+                            style={themedStyles.campo}
                             value={filtroLugar}
                             onChangeText={setFiltroLugar}
                             placeholder="Ej.: Termas, Plaza Washington..."
                         />
 
-                        <Text style={styles.etiqueta}>Fecha de inicio del evento</Text>
+                        <Text style={themedStyles.etiqueta}>Fecha de inicio del evento</Text>
 
-                        <View style={styles.filaFechas}>
+                        <View style={themedStyles.filaFechas}>
                             <TextInput
-                                style={[styles.campo, styles.campoFechaFiltro]}
+                                style={[themedStyles.campo, themedStyles.campoFechaFiltro]}
                                 value={fechaDesdeFiltro}
                                 onChangeText={setFechaDesdeFiltro}
                                 placeholder="Desde AAAA-MM-DD"
@@ -725,7 +729,7 @@ export default function EventosAdminPanel({
                             />
 
                             <TextInput
-                                style={[styles.campo, styles.campoFechaFiltro]}
+                                style={[themedStyles.campo, themedStyles.campoFechaFiltro]}
                                 value={fechaHastaFiltro}
                                 onChangeText={setFechaHastaFiltro}
                                 placeholder="Hasta AAAA-MM-DD"
@@ -733,84 +737,84 @@ export default function EventosAdminPanel({
                             />
                         </View>
 
-                        <Text style={styles.textoResultados}>
+                        <Text style={themedStyles.textoResultados}>
                             {eventosFiltrados.length} de {eventos.length} eventos
                         </Text>
 
                         <Pressable
-                            style={styles.botonLimpiarFiltros}
+                            style={themedStyles.botonLimpiarFiltros}
                             onPress={limpiarFiltros}
                         >
-                            <Text style={styles.textoBotonLimpiar}>
+                            <Text style={themedStyles.textoBotonLimpiar}>
                                 Limpiar filtros
                             </Text>
                         </Pressable>
                     </View>
 
                     {eventos.length === 0 ? (
-                        <View style={styles.tarjeta}>
-                            <Text style={styles.textoSecundario}>
+                        <View style={themedStyles.tarjeta}>
+                            <Text style={themedStyles.textoSecundario}>
                                 No hay eventos disponibles para mostrar.
                             </Text>
                         </View>
                     ) : eventosFiltrados.length === 0 ? (
-                        <View style={styles.tarjeta}>
-                            <Text style={styles.textoSecundario}>
+                        <View style={themedStyles.tarjeta}>
+                            <Text style={themedStyles.textoSecundario}>
                                 No encontramos eventos que coincidan con los filtros.
                             </Text>
                         </View>
                     ) : (
                         eventosFiltrados.map((evento) => (
-                            <View key={evento.id} style={styles.tarjeta}>
-                                <Text style={styles.tituloTarjeta}>
+                            <View key={evento.id} style={themedStyles.tarjeta}>
+                                <Text style={themedStyles.tituloTarjeta}>
                                     {evento.titulo}
                                 </Text>
 
-                                <Text style={styles.textoSecundario}>
+                                <Text style={themedStyles.textoSecundario}>
                                     {formatearFecha(evento.inicio)}
                                 </Text>
 
                                 {evento.direccionLibre ? (
-                                    <Text style={styles.textoSecundario}>
+                                    <Text style={themedStyles.textoSecundario}>
                                         {evento.direccionLibre}
                                     </Text>
                                 ) : null}
 
-                                <View style={styles.estadoActual}>
-                                    <Text style={styles.etiqueta}>Estado actual:</Text>
+                                <View style={themedStyles.estadoActual}>
+                                    <Text style={themedStyles.etiqueta}>Estado actual:</Text>
                                     <Text
                                         style={[
-                                            styles.estadoTexto,
-                                            evento.estado === 'cancelado' && styles.estadoCancelado,
-                                            evento.estado === 'suspendido' && styles.estadoSuspendido,
-                                            evento.estado === 'finalizado' && styles.estadoFinalizado,
+                                            themedStyles.estadoTexto,
+                                            evento.estado === 'cancelado' && themedStyles.estadoCancelado,
+                                            evento.estado === 'suspendido' && themedStyles.estadoSuspendido,
+                                            evento.estado === 'finalizado' && themedStyles.estadoFinalizado,
                                         ]}
                                     >
                                         {evento.estado.toUpperCase()}
                                     </Text>
                                 </View>
 
-                                <View style={styles.filaAcciones}>
+                                <View style={themedStyles.filaAcciones}>
                                     <Pressable
-                                        style={styles.botonSecundario}
+                                        style={themedStyles.botonSecundario}
                                         onPress={() => abrirEdicion(evento)}
                                     >
-                                        <Text style={styles.textoBotonSecundario}>Editar</Text>
+                                        <Text style={themedStyles.textoBotonSecundario}>Editar</Text>
                                     </Pressable>
 
                                     <Pressable
-                                        style={styles.botonSecundario}
+                                        style={themedStyles.botonSecundario}
                                         onPress={() => abrirReprogramacion(evento)}
                                     >
-                                        <Text style={styles.textoBotonSecundario}>
+                                        <Text style={themedStyles.textoBotonSecundario}>
                                             Reprogramar
                                         </Text>
                                     </Pressable>
                                 </View>
 
-                                <Text style={styles.etiqueta}>Cambiar estado</Text>
+                                <Text style={themedStyles.etiqueta}>Cambiar estado</Text>
 
-                                <View style={styles.filaOpciones}>
+                                <View style={themedStyles.filaOpciones}>
                                     {(
                                         [
                                             ['programado', 'Programado'],
@@ -825,19 +829,19 @@ export default function EventosAdminPanel({
                                                 evento.estado === valor
                                             }
                                             style={[
-                                                styles.botonEstado,
-                                                evento.estado === valor && styles.botonOpcionActivo,
-                                                actualizandoEstado !== null && styles.deshabilitado,
+                                                themedStyles.botonEstado,
+                                                evento.estado === valor && themedStyles.botonOpcionActivo,
+                                                actualizandoEstado !== null && themedStyles.deshabilitado,
                                             ]}
                                             onPress={() => cambiarEstado(evento, valor)}
                                         >
                                             {actualizandoEstado === evento.id ? (
-                                                <ActivityIndicator size="small" color={COLOR} />
+                                                <ActivityIndicator size="small" color={colors.primary} />
                                             ) : (
                                                 <Text
                                                     style={[
-                                                        styles.textoOpcion,
-                                                        evento.estado === valor && styles.textoOpcionActivo,
+                                                        themedStyles.textoOpcion,
+                                                        evento.estado === valor && themedStyles.textoOpcionActivo,
                                                     ]}
                                                 >
                                                     {nombre}
@@ -851,8 +855,8 @@ export default function EventosAdminPanel({
                     )}
                 </>
             ) : (
-                <View style={styles.tarjeta}>
-                    <Text style={styles.tituloTarjeta}>
+                <View style={themedStyles.tarjeta}>
+                    <Text style={themedStyles.tituloTarjeta}>
                         {modo === 'crear'
                             ? 'Nuevo evento'
                             : modo === 'editar'
@@ -862,29 +866,29 @@ export default function EventosAdminPanel({
 
                     {modo === 'reprogramar' ? (
                         <>
-                            <Text style={styles.textoSecundario}>
+                            <Text style={themedStyles.textoSecundario}>
                                 {eventoEditado?.titulo}
                             </Text>
 
-                            <Text style={styles.aviso}>
+                            <Text style={themedStyles.aviso}>
                                 Al guardar, el evento quedará automáticamente como PROGRAMADO,
                                 incluso si ya había finalizado.
                             </Text>
                         </>
                     ) : (
                         <>
-                            <Text style={styles.etiqueta}>Título *</Text>
+                            <Text style={themedStyles.etiqueta}>Título *</Text>
                             <TextInput
-                                style={styles.campo}
+                                style={themedStyles.campo}
                                 value={titulo}
                                 onChangeText={setTitulo}
                                 placeholder="Nombre del evento"
                                 maxLength={200}
                             />
 
-                            <Text style={styles.etiqueta}>Descripción *</Text>
+                            <Text style={themedStyles.etiqueta}>Descripción *</Text>
                             <TextInput
-                                style={[styles.campo, styles.campoMultilinea]}
+                                style={[themedStyles.campo, themedStyles.campoMultilinea]}
                                 value={descripcion}
                                 onChangeText={setDescripcion}
                                 placeholder="Descripción del evento"
@@ -892,20 +896,20 @@ export default function EventosAdminPanel({
                                 textAlignVertical="top"
                             />
 
-                            <Text style={styles.etiqueta}>Ubicación *</Text>
+                            <Text style={themedStyles.etiqueta}>Ubicación *</Text>
 
-                            <View style={styles.filaOpciones}>
+                            <View style={themedStyles.filaOpciones}>
                                 <Pressable
                                     style={[
-                                        styles.botonOpcion,
-                                        tipoUbicacion === 'catalogo' && styles.botonOpcionActivo,
+                                        themedStyles.botonOpcion,
+                                        tipoUbicacion === 'catalogo' && themedStyles.botonOpcionActivo,
                                     ]}
                                     onPress={() => setTipoUbicacion('catalogo')}
                                 >
                                     <Text
                                         style={[
-                                            styles.textoOpcion,
-                                            tipoUbicacion === 'catalogo' && styles.textoOpcionActivo,
+                                            themedStyles.textoOpcion,
+                                            tipoUbicacion === 'catalogo' && themedStyles.textoOpcionActivo,
                                         ]}
                                     >
                                         Lugar del catálogo
@@ -914,15 +918,15 @@ export default function EventosAdminPanel({
 
                                 <Pressable
                                     style={[
-                                        styles.botonOpcion,
-                                        tipoUbicacion === 'libre' && styles.botonOpcionActivo,
+                                        themedStyles.botonOpcion,
+                                        tipoUbicacion === 'libre' && themedStyles.botonOpcionActivo,
                                     ]}
                                     onPress={() => setTipoUbicacion('libre')}
                                 >
                                     <Text
                                         style={[
-                                            styles.textoOpcion,
-                                            tipoUbicacion === 'libre' && styles.textoOpcionActivo,
+                                            themedStyles.textoOpcion,
+                                            tipoUbicacion === 'libre' && themedStyles.textoOpcionActivo,
                                         ]}
                                     >
                                         Dirección libre
@@ -932,22 +936,22 @@ export default function EventosAdminPanel({
 
                             {tipoUbicacion === 'catalogo' ? (
                                 <ScrollView
-                                    style={styles.listaLugares}
+                                    style={themedStyles.listaLugares}
                                     nestedScrollEnabled
                                 >
                                     {lugares.map((lugar) => (
                                         <Pressable
                                             key={lugar.id}
                                             style={[
-                                                styles.opcionLugar,
-                                                lugarId === lugar.id && styles.opcionLugarActiva,
+                                                themedStyles.opcionLugar,
+                                                lugarId === lugar.id && themedStyles.opcionLugarActiva,
                                             ]}
                                             onPress={() => setLugarId(lugar.id)}
                                         >
                                             <Text
                                                 style={[
-                                                    styles.nombreLugar,
-                                                    lugarId === lugar.id && styles.nombreLugarActivo,
+                                                    themedStyles.nombreLugar,
+                                                    lugarId === lugar.id && themedStyles.nombreLugarActivo,
                                                 ]}
                                             >
                                                 {lugar.nombre}
@@ -957,26 +961,26 @@ export default function EventosAdminPanel({
                                 </ScrollView>
                             ) : (
                                 <>
-                                    <Text style={styles.etiqueta}>Dirección *</Text>
+                                    <Text style={themedStyles.etiqueta}>Dirección *</Text>
                                     <TextInput
-                                        style={styles.campo}
+                                        style={themedStyles.campo}
                                         value={direccion}
                                         onChangeText={setDireccion}
                                         placeholder="Dirección del evento"
                                     />
 
-                                    <Text style={styles.etiqueta}>Latitud (opcional)</Text>
+                                    <Text style={themedStyles.etiqueta}>Latitud (opcional)</Text>
                                     <TextInput
-                                        style={styles.campo}
+                                        style={themedStyles.campo}
                                         value={latitud}
                                         onChangeText={setLatitud}
                                         placeholder="-32.2236"
                                         keyboardType="decimal-pad"
                                     />
 
-                                    <Text style={styles.etiqueta}>Longitud (opcional)</Text>
+                                    <Text style={themedStyles.etiqueta}>Longitud (opcional)</Text>
                                     <TextInput
-                                        style={styles.campo}
+                                        style={themedStyles.campo}
                                         value={longitud}
                                         onChangeText={setLongitud}
                                         placeholder="-58.1427"
@@ -987,35 +991,35 @@ export default function EventosAdminPanel({
                         </>
                     )}
 
-                    <Text style={styles.etiqueta}>Fecha de inicio *</Text>
+                    <Text style={themedStyles.etiqueta}>Fecha de inicio *</Text>
                     <TextInput
-                        style={styles.campo}
+                        style={themedStyles.campo}
                         value={fechaInicio}
                         onChangeText={setFechaInicio}
                         placeholder="AAAA-MM-DD"
                         autoCapitalize="none"
                     />
 
-                    <Text style={styles.etiqueta}>Hora de inicio *</Text>
+                    <Text style={themedStyles.etiqueta}>Hora de inicio *</Text>
                     <TextInput
-                        style={styles.campo}
+                        style={themedStyles.campo}
                         value={horaInicio}
                         onChangeText={setHoraInicio}
                         placeholder="20:00"
                     />
 
-                    <Text style={styles.etiqueta}>Fecha de finalización (opcional)</Text>
+                    <Text style={themedStyles.etiqueta}>Fecha de finalización (opcional)</Text>
                     <TextInput
-                        style={styles.campo}
+                        style={themedStyles.campo}
                         value={fechaFin}
                         onChangeText={setFechaFin}
                         placeholder="AAAA-MM-DD"
                         autoCapitalize="none"
                     />
 
-                    <Text style={styles.etiqueta}>Hora de finalización (opcional)</Text>
+                    <Text style={themedStyles.etiqueta}>Hora de finalización (opcional)</Text>
                     <TextInput
-                        style={styles.campo}
+                        style={themedStyles.campo}
                         value={horaFin}
                         onChangeText={setHoraFin}
                         placeholder="23:00"
@@ -1023,36 +1027,36 @@ export default function EventosAdminPanel({
 
                     {modo !== 'reprogramar' ? (
                         <>
-                            <Text style={styles.etiqueta}>Precio en pesos (opcional)</Text>
+                            <Text style={themedStyles.etiqueta}>Precio en pesos (opcional)</Text>
                             <TextInput
-                                style={styles.campo}
+                                style={themedStyles.campo}
                                 value={precio}
                                 onChangeText={setPrecio}
                                 placeholder="0"
                                 keyboardType="numeric"
                             />
 
-                            <Text style={styles.etiqueta}>Imagen del evento</Text>
+                            <Text style={themedStyles.etiqueta}>Imagen del evento</Text>
 
                             {imagenSeleccionada ? (
                                 <Image
                                     source={{ uri: imagenSeleccionada.uri }}
-                                    style={styles.imagen}
+                                    style={themedStyles.imagen}
                                     resizeMode="cover"
                                 />
                             ) : imagenActual ? (
                                 <Image
                                     source={{ uri: prepararUrlImagen(imagenActual) }}
-                                    style={styles.imagen}
+                                    style={themedStyles.imagen}
                                     resizeMode="cover"
                                 />
                             ) : null}
 
                             <Pressable
-                                style={styles.botonSecundario}
+                                style={themedStyles.botonSecundario}
                                 onPress={seleccionarImagen}
                             >
-                                <Text style={styles.textoBotonSecundario}>
+                                <Text style={themedStyles.textoBotonSecundario}>
                                     {imagenSeleccionada || imagenActual
                                         ? 'Cambiar imagen'
                                         : 'Elegir imagen de la galería'}
@@ -1061,35 +1065,35 @@ export default function EventosAdminPanel({
 
                             {imagenActual || imagenSeleccionada ? (
                                 <Pressable
-                                    style={styles.botonQuitarImagen}
+                                    style={themedStyles.botonQuitarImagen}
                                     onPress={() => {
                                         setImagenActual(null);
                                         setImagenSeleccionada(null);
                                     }}
                                 >
-                                    <Text style={styles.textoQuitarImagen}>
+                                    <Text style={themedStyles.textoQuitarImagen}>
                                         Quitar imagen
                                     </Text>
                                 </Pressable>
                             ) : null}
 
-                            <Text style={styles.etiqueta}>Estado</Text>
+                            <Text style={themedStyles.etiqueta}>Estado</Text>
                             {selectorEstado()}
                         </>
                     ) : null}
 
                     <Pressable
                         style={[
-                            styles.botonPrincipal,
-                            guardando && styles.deshabilitado,
+                            themedStyles.botonPrincipal,
+                            guardando && themedStyles.deshabilitado,
                         ]}
                         disabled={guardando}
                         onPress={guardarEvento}
                     >
                         {guardando ? (
-                            <ActivityIndicator color="#FFFFFF" />
+                            <ActivityIndicator color={colors.onPrimary} />
                         ) : (
-                            <Text style={styles.textoBoton}>
+                            <Text style={themedStyles.textoBoton}>
                                 {modo === 'crear'
                                     ? 'Crear evento'
                                     : modo === 'editar'
@@ -1100,11 +1104,11 @@ export default function EventosAdminPanel({
                     </Pressable>
 
                     <Pressable
-                        style={styles.botonCancelar}
+                        style={themedStyles.botonCancelar}
                         disabled={guardando}
                         onPress={cerrarFormulario}
                     >
-                        <Text style={styles.textoCancelar}>Volver a los eventos</Text>
+                        <Text style={themedStyles.textoCancelar}>Volver a los eventos</Text>
                     </Pressable>
                 </View>
             )}

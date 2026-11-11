@@ -1,3 +1,4 @@
+import { useThemedStyles } from "@/hooks/use-theme";
 
 import {
   Pressable,
@@ -14,8 +15,11 @@ import { useEffect, useState } from 'react';
 import { lugares } from '@/data/lugares';
 import type { Place } from '@/data/lugares';
 import { obtenerLugaresIntegrados } from '@/servicios/lugares-integrados';
+import { useThemeContext } from '@/contexts/theme-context';
 
 export default function LugaresScreen() {
+  const themedStyles = useThemedStyles(styles);
+  const { colors } = useThemeContext();
   const [busqueda, setBusqueda] = useState('');
   const [categoriaSeleccionada, setCategoriaSeleccionada] =
     useState('Todos');
@@ -86,38 +90,48 @@ export default function LugaresScreen() {
   });
 
   return (
-    <View style={styles.screen}>
-      <SafeAreaView style={styles.container}>
+    <View style={[themedStyles.screen, { backgroundColor: colors.background }]}>
+      <SafeAreaView
+        style={[themedStyles.container, { backgroundColor: colors.background }]}
+      >
         {/* Encabezado */}
-        <View style={styles.header}>
+        <View style={themedStyles.header}>
           <Pressable
-            style={styles.backButton}
+            style={[themedStyles.backButton, { backgroundColor: colors.backgroundSelected }]}
             onPress={() => router.back()}
             accessibilityRole="button"
             accessibilityLabel="Volver"
           >
-            <Text style={styles.backIcon}>‹</Text>
+            <Text style={[themedStyles.backIcon, { color: colors.text }]}>‹</Text>
           </Pressable>
 
-          <View style={styles.headerText}>
-            <Text style={styles.smallTitle}>GUÍA TURÍSTICA</Text>
+          <View style={themedStyles.headerText}>
+            <Text style={[themedStyles.smallTitle, { color: colors.primary }]}>GUÍA TURÍSTICA</Text>
 
-            <Text style={styles.title}>Lugares</Text>
+            <Text style={[themedStyles.title, { color: colors.text }]}>Lugares</Text>
           </View>
         </View>
 
-        <Text style={styles.subtitle}>
+        <Text style={[themedStyles.subtitle, { color: colors.textSecondary }]}>
           Descubrí lugares para conocer en Colón
         </Text>
 
         {/* Buscador */}
-        <View style={styles.searchContainer}>
-          <Text style={styles.searchIcon}>🔍</Text>
+        <View
+          style={[
+            themedStyles.searchContainer,
+            {
+              backgroundColor: colors.inputBackground,
+              borderColor: colors.inputBorder,
+            },
+          ]}
+        >
+          <Text style={themedStyles.searchIcon}>🔍</Text>
 
           <TextInput
-            style={styles.searchInput}
+            style={[themedStyles.searchInput, { color: colors.text }]}
             placeholder="Buscar lugares..."
-            placeholderTextColor="#99958C"
+            placeholderTextColor={colors.textSecondary}
             value={busqueda}
             onChangeText={setBusqueda}
             returnKeyType="search"
@@ -126,11 +140,11 @@ export default function LugaresScreen() {
         </View>
 
         {/* Categorías dinámicas */}
-        <View style={styles.categoriesWrapper}>
+        <View style={themedStyles.categoriesWrapper}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoriesContent}
+            contentContainerStyle={themedStyles.categoriesContent}
           >
             {categorias.map((categoria) => {
               const activa = categoriaSeleccionada === categoria;
@@ -139,8 +153,15 @@ export default function LugaresScreen() {
                 <Pressable
                   key={categoria}
                   style={[
-                    styles.categoryButton,
-                    activa && styles.categoryButtonActive,
+                    themedStyles.categoryButton,
+                    {
+                      backgroundColor: colors.backgroundElement,
+                      borderColor: colors.border,
+                    },
+                    activa && {
+                      backgroundColor: colors.primary,
+                      borderColor: colors.primary,
+                    },
                   ]}
                   onPress={() => setCategoriaSeleccionada(categoria)}
                   accessibilityRole="button"
@@ -148,8 +169,8 @@ export default function LugaresScreen() {
                 >
                   <Text
                     style={[
-                      styles.categoryText,
-                      activa && styles.categoryTextActive,
+                      themedStyles.categoryText,
+                      { color: activa ? colors.onPrimary : colors.textSecondary },
                     ]}
                   >
                     {categoria}
@@ -161,8 +182,8 @@ export default function LugaresScreen() {
         </View>
 
         {/* Cantidad de resultados */}
-        <View style={styles.resultsHeader}>
-          <Text style={styles.resultsText}>
+        <View style={themedStyles.resultsHeader}>
+          <Text style={[themedStyles.resultsText, { color: colors.textSecondary }]}>
             {cargando
               ? 'Actualizando lugares...'
               : `${lugaresFiltrados.length} ${lugaresFiltrados.length === 1 ? 'lugar' : 'lugares'
@@ -173,14 +194,20 @@ export default function LugaresScreen() {
         {/* Lista de lugares */}
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={themedStyles.list}
           keyboardShouldPersistTaps="handled"
         >
           {lugaresFiltrados.length > 0 ? (
             lugaresFiltrados.map((lugar) => (
               <Pressable
                 key={lugar.id}
-                style={styles.placeCard}
+                style={[
+                  themedStyles.placeCard,
+                  {
+                    backgroundColor: colors.backgroundElement,
+                    borderColor: colors.border,
+                  },
+                ]}
                 onPress={() =>
                   router.push({
                     pathname: '/lugar-detalle',
@@ -190,54 +217,56 @@ export default function LugaresScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={`Ver detalles de ${lugar.nombre}`}
               >
-                <View style={styles.placeIcon}>
-                  <Text style={styles.placeIconText}>
+                <View
+                  style={[themedStyles.placeIcon, { backgroundColor: colors.successBackground }]}
+                >
+                  <Text style={themedStyles.placeIconText}>
                     {lugar.icono}
                   </Text>
                 </View>
 
-                <View style={styles.placeInfo}>
-                  <Text style={styles.placeName}>
+                <View style={themedStyles.placeInfo}>
+                  <Text style={[themedStyles.placeName, { color: colors.text }]}>
                     {lugar.nombre}
                   </Text>
 
-                  <Text style={styles.placeCategory}>
+                  <Text style={[themedStyles.placeCategory, { color: colors.primary }]}>
                     {lugar.categoria}
                   </Text>
 
                   <Text
-                    style={styles.placeDescription}
+                    style={[themedStyles.placeDescription, { color: colors.textSecondary }]}
                     numberOfLines={3}
                   >
                     {lugar.descripcion || 'Descripción no disponible.'}
                   </Text>
                 </View>
 
-                <Text style={styles.arrow}>›</Text>
+                <Text style={[themedStyles.arrow, { color: colors.primary }]}>›</Text>
               </Pressable>
             ))
           ) : (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>🔎</Text>
+            <View style={themedStyles.emptyContainer}>
+              <Text style={themedStyles.emptyIcon}>🔎</Text>
 
-              <Text style={styles.emptyTitle}>
+              <Text style={[themedStyles.emptyTitle, { color: colors.text }]}>
                 No encontramos lugares
               </Text>
 
-              <Text style={styles.emptyText}>
+              <Text style={[themedStyles.emptyText, { color: colors.textSecondary }]}>
                 Probá con otra búsqueda o seleccioná otra categoría.
               </Text>
 
               {(busqueda.length > 0 ||
                 categoriaSeleccionada !== 'Todos') && (
                   <Pressable
-                    style={styles.clearButton}
+                    style={[themedStyles.clearButton, { backgroundColor: colors.primary }]}
                     onPress={() => {
                       setBusqueda('');
                       setCategoriaSeleccionada('Todos');
                     }}
                   >
-                    <Text style={styles.clearButtonText}>
+                    <Text style={[themedStyles.clearButtonText, { color: colors.onPrimary }]}>
                       Limpiar filtros
                     </Text>
                   </Pressable>

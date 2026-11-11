@@ -1,3 +1,5 @@
+import { useThemedStyles } from "@/hooks/use-theme";
+import { useThemeContext } from '@/contexts/theme-context';
 
 import { useState } from 'react';
 import {
@@ -17,6 +19,8 @@ import { useRouter } from 'expo-router';
 import { iniciarSesion } from '@/servicios/autenticacion';
 
 export default function LoginScreen() {
+  const themedStyles = useThemedStyles(styles);
+  const { colors } = useThemeContext();
     const router = useRouter();
 
     const [email, setEmail] = useState('');
@@ -69,46 +73,46 @@ export default function LoginScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={themedStyles.container}>
             <KeyboardAvoidingView
-                style={styles.keyboard}
+                style={themedStyles.keyboard}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
                 <ScrollView
-                    contentContainerStyle={styles.content}
+                    contentContainerStyle={themedStyles.content}
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                 >
                     {/* Encabezado */}
-                    <View style={styles.header}>
-                        <View style={styles.logoContainer}>
-                            <Text style={styles.logoIcon}>👤</Text>
+                    <View style={themedStyles.header}>
+                        <View style={themedStyles.logoContainer}>
+                            <Text style={themedStyles.logoIcon}>👤</Text>
                         </View>
 
-                        <Text style={styles.smallTitle}>
+                        <Text style={themedStyles.smallTitle}>
                             MI CIUDAD
                         </Text>
 
-                        <Text style={styles.title}>
+                        <Text style={themedStyles.title}>
                             Iniciar sesión
                         </Text>
 
-                        <Text style={styles.description}>
+                        <Text style={themedStyles.description}>
                             Iniciá sesión para guardar favoritos,
                             registrar visitas y consultar tu recorrido.
                         </Text>
                     </View>
 
                     {/* Formulario */}
-                    <View style={styles.form}>
-                        <Text style={styles.label}>
+                    <View style={themedStyles.form}>
+                        <Text style={themedStyles.label}>
                             Email
                         </Text>
 
                         <TextInput
-                            style={styles.input}
+                            style={themedStyles.input}
                             placeholder="Ingresá tu email"
-                            placeholderTextColor="#99968E"
+                            placeholderTextColor={colors.textSecondary}
                             value={email}
                             onChangeText={setEmail}
                             keyboardType="email-address"
@@ -116,16 +120,16 @@ export default function LoginScreen() {
                             autoCorrect={false}
                         />
 
-                        <Text style={styles.label}>
+                        <Text style={themedStyles.label}>
                             Contraseña
                         </Text>
 
                         {/* Contraseña con botón para mostrar */}
-                        <View style={styles.passwordContainer}>
+                        <View style={themedStyles.passwordContainer}>
                             <TextInput
-                                style={styles.passwordInput}
+                                style={themedStyles.passwordInput}
                                 placeholder="Ingresá tu contraseña"
-                                placeholderTextColor="#99968E"
+                                placeholderTextColor={colors.textSecondary}
                                 value={password}
                                 onChangeText={setPassword}
                                 secureTextEntry={!mostrarPassword}
@@ -134,13 +138,13 @@ export default function LoginScreen() {
                             />
 
                             <Pressable
-                                style={styles.eyeButton}
+                                style={themedStyles.eyeButton}
                                 onPress={() =>
                                     setMostrarPassword(!mostrarPassword)
                                 }
                                 hitSlop={8}
                             >
-                                <Text style={styles.eyeText}>
+                                <Text style={themedStyles.eyeText}>
                                     {mostrarPassword ? '🙈' : '👁️'}
                                 </Text>
                             </Pressable>
@@ -149,13 +153,13 @@ export default function LoginScreen() {
                         {/* Botón principal */}
                         <Pressable
                             style={[
-                                styles.button,
-                                cargando && styles.buttonDisabled,
+                                themedStyles.button,
+                                cargando && themedStyles.buttonDisabled,
                             ]}
                             onPress={manejarLogin}
                             disabled={cargando}
                         >
-                            <Text style={styles.buttonText}>
+                            <Text style={themedStyles.buttonText}>
                                 {cargando
                                     ? 'Ingresando...'
                                     : 'Iniciar sesión'}
@@ -164,10 +168,10 @@ export default function LoginScreen() {
 
                         {/* Registro */}
                         <Pressable
-                            style={styles.secondaryButton}
+                            style={themedStyles.secondaryButton}
                             onPress={() => router.push('/registro')}
                         >
-                            <Text style={styles.secondaryButtonText}>
+                            <Text style={themedStyles.secondaryButtonText}>
                                 Crear una cuenta
                             </Text>
                         </Pressable>

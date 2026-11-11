@@ -1,3 +1,5 @@
+import { useThemedStyles } from "@/hooks/use-theme";
+import { useThemeContext } from '@/contexts/theme-context';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -48,6 +50,8 @@ const CLAVE_AUDIO_VALIDA =
   /^audios\/\d{4}\/\d{2}\/[a-z0-9-]{3,60}\.(m4a|aac|mp3)$/;
 
 export default function AdministracionScreen() {
+  const themedStyles = useThemedStyles(styles);
+  const { colors } = useThemeContext();
   const [verificandoSesion, setVerificandoSesion] = useState(true);
   const [cargando, setCargando] = useState(false);
   const [seccion, setSeccion] = useState<Seccion>('audioguias');
@@ -585,37 +589,37 @@ export default function AdministracionScreen() {
 
   if (verificandoSesion) {
     return (
-      <View style={styles.centrado}>
-        <ActivityIndicator size="large" color="#315C49" />
-        <Text style={styles.textoCarga}>Verificando permisos...</Text>
+      <View style={themedStyles.centrado}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={themedStyles.textoCarga}>Verificando permisos...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.contenedor}>
+    <View style={themedStyles.contenedor}>
       <ScrollView
-        contentContainerStyle={styles.contenido}
+        contentContainerStyle={themedStyles.contenido}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.titulo}>Administración</Text>
+        <Text style={themedStyles.titulo}>Administración</Text>
 
-        <Text style={styles.subtitulo}>
+        <Text style={themedStyles.subtitulo}>
           Gestioná las audioguías y los eventos de Mi Ciudad.
         </Text>
 
-        <View style={styles.pestanas}>
+        <View style={themedStyles.pestanas}>
           <Pressable
             style={[
-              styles.pestana,
-              seccion === 'audioguias' && styles.pestanaActiva,
+              themedStyles.pestana,
+              seccion === 'audioguias' && themedStyles.pestanaActiva,
             ]}
             onPress={() => setSeccion('audioguias')}
           >
             <Text
               style={[
-                styles.textoPestana,
-                seccion === 'audioguias' && styles.textoPestanaActivo,
+                themedStyles.textoPestana,
+                seccion === 'audioguias' && themedStyles.textoPestanaActivo,
               ]}
             >
               Audioguías
@@ -624,15 +628,15 @@ export default function AdministracionScreen() {
 
           <Pressable
             style={[
-              styles.pestana,
-              seccion === 'eventos' && styles.pestanaActiva,
+              themedStyles.pestana,
+              seccion === 'eventos' && themedStyles.pestanaActiva,
             ]}
             onPress={() => setSeccion('eventos')}
           >
             <Text
               style={[
-                styles.textoPestana,
-                seccion === 'eventos' && styles.textoPestanaActivo,
+                themedStyles.textoPestana,
+                seccion === 'eventos' && themedStyles.textoPestanaActivo,
               ]}
             >
               Eventos
@@ -641,73 +645,73 @@ export default function AdministracionScreen() {
         </View>
 
         {cargando ? (
-          <View style={styles.centrado}>
-            <ActivityIndicator size="large" color="#315C49" />
-            <Text style={styles.textoCarga}>
+          <View style={themedStyles.centrado}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={themedStyles.textoCarga}>
               Cargando información...
             </Text>
           </View>
         ) : error ? (
-          <View style={styles.tarjeta}>
-            <Text style={styles.error}>
+          <View style={themedStyles.tarjeta}>
+            <Text style={themedStyles.error}>
               No se pudieron cargar los datos.
             </Text>
 
-            <Text style={styles.textoSecundario}>
+            <Text style={themedStyles.textoSecundario}>
               {traducirError(error)}
             </Text>
 
             <Pressable
-              style={styles.botonPrincipal}
+              style={themedStyles.botonPrincipal}
               onPress={cargarDatos}
             >
-              <Text style={styles.textoBoton}>Reintentar</Text>
+              <Text style={themedStyles.textoBoton}>Reintentar</Text>
             </Pressable>
           </View>
         ) : seccion === 'audioguias' ? (
           <View>
-            <View style={styles.tarjeta}>
-              <Text style={styles.tituloTarjeta}>
+            <View style={themedStyles.tarjeta}>
+              <Text style={themedStyles.tituloTarjeta}>
                 Administrar audioguías
               </Text>
 
-              <Text style={styles.textoSecundario}>
+              <Text style={themedStyles.textoSecundario}>
                 Seleccioná un lugar para consultar sus audios, cargar
                 nuevas versiones o recuperar versiones anteriores.
               </Text>
 
               <Pressable
                 style={[
-                  styles.botonPrincipal,
+                  themedStyles.botonPrincipal,
                   recuperandoTranscripciones && { opacity: 0.6 },
                 ]}
                 onPress={recuperarTranscripciones}
                 disabled={recuperandoTranscripciones}
               >
                 {recuperandoTranscripciones ? (
-                  <ActivityIndicator color="#FFFFFF" />
+                  <ActivityIndicator color={colors.onPrimary} />
                 ) : (
-                  <Text style={styles.textoBoton}>
+                  <Text style={themedStyles.textoBoton}>
                     Recuperar transcripciones existentes
                   </Text>
                 )}
               </Pressable>
 
-              <Text style={styles.etiqueta}>Lugar</Text>
+              <Text style={themedStyles.etiqueta}>Lugar</Text>
 
               <Pressable
-                style={[styles.opcionLugar, styles.opcionLugarActiva]}
+                style={[themedStyles.opcionLugar, themedStyles.opcionLugarActiva]}
                 onPress={() => setMostrarLugares((actual) => !actual)}
               >
-                <View style={styles.filaLugar}>
-                  <Text style={styles.nombreLugar}>
+                <View style={themedStyles.filaLugar}>
+                  <Text style={themedStyles.nombreLugar}>
                     {lugarActual?.nombre ?? 'Seleccioná un lugar'}
                   </Text>
-                  <Text style={styles.marcaSeleccion}>
+                  <Text style={themedStyles.marcaSeleccion}>
                     {mostrarLugares ? '▲' : '▼'}
                   </Text>
                 </View>
-                <Text style={styles.textoSecundario}>
+                <Text style={themedStyles.textoSecundario}>
                   {mostrarLugares
                     ? 'Tocá un lugar para seleccionarlo'
                     : 'Tocá para cambiar de lugar'}
@@ -719,9 +723,9 @@ export default function AdministracionScreen() {
                   <Pressable
                     key={lugar.id}
                     style={[
-                      styles.opcionLugar,
+                      themedStyles.opcionLugar,
                       lugarSeleccionado === lugar.id &&
-                      styles.opcionLugarActiva,
+                      themedStyles.opcionLugarActiva,
                     ]}
                     onPress={() => {
                       setLugarSeleccionado(lugar.id);
@@ -730,17 +734,17 @@ export default function AdministracionScreen() {
                       setTranscripcionExpandida(null);
                     }}
                   >
-                    <View style={styles.filaLugar}>
-                      <Text style={styles.nombreLugar}>
+                    <View style={themedStyles.filaLugar}>
+                      <Text style={themedStyles.nombreLugar}>
                         {lugar.nombre}
                       </Text>
 
                       {lugarSeleccionado === lugar.id && (
-                        <Text style={styles.marcaSeleccion}>✓</Text>
+                        <Text style={themedStyles.marcaSeleccion}>✓</Text>
                       )}
                     </View>
 
-                    <Text style={styles.textoSecundario}>
+                    <Text style={themedStyles.textoSecundario}>
                       {lugar.categoriaId}
                     </Text>
                   </Pressable>
@@ -748,28 +752,28 @@ export default function AdministracionScreen() {
             </View>
 
             {lugarActual && (
-              <View style={styles.tarjeta}>
-                <Text style={styles.tituloTarjeta}>
+              <View style={themedStyles.tarjeta}>
+                <Text style={themedStyles.tituloTarjeta}>
                   Agregar audioguía
                 </Text>
 
-                <Text style={styles.textoSecundario}>
+                <Text style={themedStyles.textoSecundario}>
                   Cargá un archivo MP3 para este lugar. Podés agregar nuevas
                   versiones sin perder las anteriores.
                 </Text>
 
                 <Pressable
                   style={[
-                    styles.botonPrincipal,
+                    themedStyles.botonPrincipal,
                     subiendoAudioguia && { opacity: 0.6 },
                   ]}
                   onPress={seleccionarYSubirAudioguia}
                   disabled={subiendoAudioguia}
                 >
                   {subiendoAudioguia ? (
-                    <ActivityIndicator color="#FFFFFF" />
+                    <ActivityIndicator color={colors.onPrimary} />
                   ) : (
-                    <Text style={styles.textoBoton}>
+                    <Text style={themedStyles.textoBoton}>
                       Agregar archivo MP3
                     </Text>
                   )}
@@ -778,12 +782,12 @@ export default function AdministracionScreen() {
             )}
 
             {lugarActual && (
-              <View style={styles.tarjeta}>
-                <Text style={styles.tituloTarjeta}>
+              <View style={themedStyles.tarjeta}>
+                <Text style={themedStyles.tituloTarjeta}>
                   Imagen del lugar
                 </Text>
 
-                <Text style={styles.textoSecundario}>
+                <Text style={themedStyles.textoSecundario}>
                   Seleccioná una fotografía para agregarla a
                   {` ${lugarActual.nombre}`}. Podés cargar imágenes
                   JPG, PNG o WebP de hasta 5 MB.
@@ -791,16 +795,16 @@ export default function AdministracionScreen() {
 
                 <Pressable
                   style={[
-                    styles.botonSecundario,
+                    themedStyles.botonSecundario,
                     subiendoImagen && { opacity: 0.6 },
                   ]}
                   onPress={seleccionarYSubirImagen}
                   disabled={subiendoImagen}
                 >
                   {subiendoImagen ? (
-                    <ActivityIndicator color="#315C49" />
+                    <ActivityIndicator color={colors.primary} />
                   ) : (
-                    <Text style={styles.textoBotonSecundario}>
+                    <Text style={themedStyles.textoBotonSecundario}>
                       Agregar imagen del lugar
                     </Text>
                   )}
@@ -809,23 +813,23 @@ export default function AdministracionScreen() {
             )}
 
             {lugarActual && (
-              <View style={styles.tarjeta}>
+              <View style={themedStyles.tarjeta}>
                 <Pressable
                   onPress={() => setMostrarHistorial((actual) => !actual)}
                 >
-                  <View style={styles.filaLugar}>
-                    <Text style={styles.tituloTarjeta}>
+                  <View style={themedStyles.filaLugar}>
+                    <Text style={themedStyles.tituloTarjeta}>
                       Historial de versiones
                     </Text>
-                    <Text style={styles.marcaSeleccion}>
+                    <Text style={themedStyles.marcaSeleccion}>
                       {mostrarHistorial ? '▲' : '▼'}
                     </Text>
                   </View>
 
-                  <Text style={styles.textoSecundario}>
+                  <Text style={themedStyles.textoSecundario}>
                     {lugarActual.nombre}
                   </Text>
-                  <Text style={styles.textoSecundario}>
+                  <Text style={themedStyles.textoSecundario}>
                     {mostrarHistorial
                       ? 'Tocá para ocultar las versiones'
                       : `${audioguias.length} versión(es) registrada(s). Tocá para consultar`}
@@ -835,55 +839,55 @@ export default function AdministracionScreen() {
                 {mostrarHistorial && (
                   <>
                     {cargandoAudioguias ? (
-                      <View style={styles.centrado}>
-                        <ActivityIndicator color="#315C49" />
-                        <Text style={styles.textoCarga}>
+                      <View style={themedStyles.centrado}>
+                        <ActivityIndicator color={colors.primary} />
+                        <Text style={themedStyles.textoCarga}>
                           Cargando historial...
                         </Text>
                       </View>
                     ) : audioguias.length === 0 ? (
-                      <Text style={styles.textoSecundario}>
+                      <Text style={themedStyles.textoSecundario}>
                         Este lugar todavía no tiene versiones registradas.
                       </Text>
                     ) : (
                       [...audioguias]
                         .sort((a, b) => Number(b.activa) - Number(a.activa))
                         .map((audio) => (
-                          <View key={audio.id} style={styles.audioVersion}>
-                            <View style={styles.filaLugar}>
-                              <Text style={styles.nombreLugar}>
+                          <View key={audio.id} style={themedStyles.audioVersion}>
+                            <View style={themedStyles.filaLugar}>
+                              <Text style={themedStyles.nombreLugar}>
                                 {audio.idioma.toUpperCase()} ·{' '}
                                 {Math.floor(audio.duracionSegundos / 60)} min{' '}
                                 {audio.duracionSegundos % 60} s
                               </Text>
 
                               {audio.activa && (
-                                <View style={styles.insigniaActiva}>
-                                  <Text style={styles.textoInsignia}>
+                                <View style={themedStyles.insigniaActiva}>
+                                  <Text style={themedStyles.textoInsignia}>
                                     ACTIVA
                                   </Text>
                                 </View>
                               )}
                             </View>
 
-                            <Text style={styles.textoSecundario}>
+                            <Text style={themedStyles.textoSecundario}>
                               Cargada: {formatearFecha(audio.creadoEn)}
                             </Text>
 
-                            <Text style={styles.textoSecundario}>
+                            <Text style={themedStyles.textoSecundario}>
                               Archivo: {audio.clave.split('/').pop()}
                             </Text>
 
                             {!audio.activa && (
                               <Pressable
-                                style={styles.botonSecundario}
+                                style={themedStyles.botonSecundario}
                                 disabled={actualizandoAudioguia !== null}
                                 onPress={() => activarVersion(audio.id)}
                               >
                                 {actualizandoAudioguia === audio.id ? (
-                                  <ActivityIndicator color="#315C49" />
+                                  <ActivityIndicator color={colors.primary} />
                                 ) : (
-                                  <Text style={styles.textoBotonSecundario}>
+                                  <Text style={themedStyles.textoBotonSecundario}>
                                     Activar esta versión
                                   </Text>
                                 )}
@@ -891,14 +895,14 @@ export default function AdministracionScreen() {
                             )}
 
                             <Pressable
-                              style={styles.botonSecundario}
+                              style={themedStyles.botonSecundario}
                               onPress={() =>
                                 setTranscripcionExpandida((actual) =>
                                   actual === audio.id ? null : audio.id,
                                 )
                               }
                             >
-                              <Text style={styles.textoBotonSecundario}>
+                              <Text style={themedStyles.textoBotonSecundario}>
                                 {transcripcionExpandida === audio.id
                                   ? 'Ocultar transcripción ▲'
                                   : 'Ver / editar transcripción ▼'}
@@ -907,14 +911,14 @@ export default function AdministracionScreen() {
 
                             {transcripcionExpandida === audio.id && (
                               <>
-                                <Text style={styles.etiqueta}>
+                                <Text style={themedStyles.etiqueta}>
                                   Transcripción
                                 </Text>
 
                                 <TextInput
                                   style={[
-                                    styles.campo,
-                                    styles.campoTranscripcion,
+                                    themedStyles.campo,
+                                    themedStyles.campoTranscripcion,
                                   ]}
                                   value={transcripciones[audio.id] ?? ''}
                                   onChangeText={(texto) =>
@@ -930,17 +934,17 @@ export default function AdministracionScreen() {
 
                                 <Pressable
                                   style={[
-                                    styles.botonSecundario,
+                                    themedStyles.botonSecundario,
                                     actualizandoAudioguia === audio.id &&
-                                    styles.botonDeshabilitado,
+                                    themedStyles.botonDeshabilitado,
                                   ]}
                                   disabled={actualizandoAudioguia !== null}
                                   onPress={() => guardarTranscripcion(audio.id)}
                                 >
                                   {actualizandoAudioguia === audio.id ? (
-                                    <ActivityIndicator color="#315C49" />
+                                    <ActivityIndicator color={colors.primary} />
                                   ) : (
-                                    <Text style={styles.textoBotonSecundario}>
+                                    <Text style={themedStyles.textoBotonSecundario}>
                                       Guardar transcripción
                                     </Text>
                                   )}

@@ -1,3 +1,4 @@
+import { useThemedStyles } from "@/hooks/use-theme";
 import { Image } from 'expo-image';
 import { SymbolView } from 'expo-symbols';
 import { Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
@@ -12,6 +13,7 @@ import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export default function TabTwoScreen() {
+  const themedStyles = useThemedStyles(styles);
   const safeAreaInsets = useSafeAreaInsets();
   const insets = {
     ...safeAreaInsets,
@@ -34,19 +36,19 @@ export default function TabTwoScreen() {
 
   return (
     <ScrollView
-      style={[styles.scrollView, { backgroundColor: theme.background }]}
+      style={[themedStyles.scrollView, { backgroundColor: theme.background }]}
       contentInset={insets}
-      contentContainerStyle={[styles.contentContainer, contentPlatformStyle]}>
-      <ThemedView style={styles.container}>
-        <ThemedView style={styles.titleContainer}>
+      contentContainerStyle={[themedStyles.contentContainer, contentPlatformStyle]}>
+      <ThemedView style={themedStyles.container}>
+        <ThemedView style={themedStyles.titleContainer}>
           <ThemedText type="subtitle">Explore</ThemedText>
-          <ThemedText style={styles.centerText} themeColor="textSecondary">
+          <ThemedText style={themedStyles.centerText} themeColor="textSecondary">
             This starter app includes example{'\n'}code to help you get started.
           </ThemedText>
 
           <ExternalLink href="https://docs.expo.dev" asChild>
-            <Pressable style={({ pressed }) => pressed && styles.pressed}>
-              <ThemedView type="backgroundElement" style={styles.linkButton}>
+            <Pressable style={({ pressed }) => pressed && themedStyles.pressed}>
+              <ThemedView type="backgroundElement" style={themedStyles.linkButton}>
                 <ThemedText type="link">Expo documentation</ThemedText>
                 <SymbolView
                   tintColor={theme.text}
@@ -58,7 +60,7 @@ export default function TabTwoScreen() {
           </ExternalLink>
         </ThemedView>
 
-        <ThemedView style={styles.sectionsWrapper}>
+        <ThemedView style={themedStyles.sectionsWrapper}>
           <Collapsible title="File-based routing">
             <ThemedText type="small">
               This app has two screens: <ThemedText type="code">src/app/index.tsx</ThemedText> and{' '}
@@ -74,7 +76,7 @@ export default function TabTwoScreen() {
           </Collapsible>
 
           <Collapsible title="Android, iOS, and web support">
-            <ThemedView type="backgroundElement" style={styles.collapsibleContent}>
+            <ThemedView type="backgroundElement" style={themedStyles.collapsibleContent}>
               <ThemedText type="small">
                 You can open this project on Android, iOS, and the web. To open the web version,
                 press <ThemedText type="smallBold">w</ThemedText> in the terminal running this
@@ -82,7 +84,7 @@ export default function TabTwoScreen() {
               </ThemedText>
               <Image
                 source={require('@/assets/images/tutorial-web.png')}
-                style={styles.imageTutorial}
+                style={themedStyles.imageTutorial}
               />
             </ThemedView>
           </Collapsible>
@@ -93,7 +95,7 @@ export default function TabTwoScreen() {
               <ThemedText type="code">@3x</ThemedText> suffixes to provide files for different
               screen densities.
             </ThemedText>
-            <Image source={require('@/assets/images/react-logo.png')} style={styles.imageReact} />
+            <Image source={require('@/assets/images/react-logo.png')} style={themedStyles.imageReact} />
             <ExternalLink href="https://reactnative.dev/docs/images">
               <ThemedText type="linkPrimary">Learn more</ThemedText>
             </ExternalLink>

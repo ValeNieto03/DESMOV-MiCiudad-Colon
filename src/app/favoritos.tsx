@@ -1,3 +1,4 @@
+import { useThemedStyles } from "@/hooks/use-theme";
 import { useCallback, useState } from 'react';
 import {
     Alert,
@@ -20,6 +21,7 @@ import {
 import { obtenerUsuarioActual } from '@/servicios/autenticacion';
 
 export default function FavoritosScreen() {
+  const themedStyles = useThemedStyles(styles);
     const router = useRouter();
 
     const [lugaresDisponibles, setLugaresDisponibles] = useState<Place[]>([]);
@@ -122,63 +124,63 @@ export default function FavoritosScreen() {
 
     return (
         <SafeAreaView
-            style={styles.safeArea}
+            style={themedStyles.safeArea}
             edges={['top']}
         >
-            <View style={styles.container}>
-                <View style={styles.header}>
+            <View style={themedStyles.container}>
+                <View style={themedStyles.header}>
                     <Pressable
-                        style={styles.backButton}
+                        style={themedStyles.backButton}
                         onPress={() => router.back()}
                     >
-                        <Text style={styles.backIcon}>‹</Text>
+                        <Text style={themedStyles.backIcon}>‹</Text>
                     </Pressable>
 
-                    <View style={styles.headerTextContainer}>
-                        <Text style={styles.title}>Mis favoritos</Text>
-                        <Text style={styles.subtitle}>
+                    <View style={themedStyles.headerTextContainer}>
+                        <Text style={themedStyles.title}>Mis favoritos</Text>
+                        <Text style={themedStyles.subtitle}>
                             Lugares que guardaste para visitar
                         </Text>
                     </View>
                 </View>
 
                 {cargando ? (
-                    <View style={styles.emptyContainer}>
-                        <Text style={styles.emptyIcon}>♡</Text>
+                    <View style={themedStyles.emptyContainer}>
+                        <Text style={themedStyles.emptyIcon}>♡</Text>
 
-                        <Text style={styles.emptyTitle}>
+                        <Text style={themedStyles.emptyTitle}>
                             Cargando favoritos...
                         </Text>
                     </View>
                 ) : lugaresFavoritos.length === 0 ? (
-                    <View style={styles.emptyContainer}>
-                        <Text style={styles.emptyIcon}>♡</Text>
+                    <View style={themedStyles.emptyContainer}>
+                        <Text style={themedStyles.emptyIcon}>♡</Text>
 
-                        <Text style={styles.emptyTitle}>
+                        <Text style={themedStyles.emptyTitle}>
                             Todavía no tenés favoritos
                         </Text>
 
-                        <Text style={styles.emptyText}>
+                        <Text style={themedStyles.emptyText}>
                             Cuando encuentres un lugar que te interese,
                             tocá el corazón para guardarlo acá.
                         </Text>
 
                         <Pressable
-                            style={styles.exploreButton}
+                            style={themedStyles.exploreButton}
                             onPress={() => router.push('/')}
                         >
-                            <Text style={styles.exploreButtonText}>
+                            <Text style={themedStyles.exploreButtonText}>
                                 Explorar lugares
                             </Text>
                         </Pressable>
                     </View>
                 ) : (
                     <ScrollView
-                        contentContainerStyle={styles.list}
+                        contentContainerStyle={themedStyles.list}
                         showsVerticalScrollIndicator={false}
                     >
-                        <View style={styles.countContainer}>
-                            <Text style={styles.countText}>
+                        <View style={themedStyles.countContainer}>
+                            <Text style={themedStyles.countText}>
                                 {lugaresFavoritos.length}{' '}
                                 {lugaresFavoritos.length === 1
                                     ? 'lugar guardado'
@@ -189,32 +191,32 @@ export default function FavoritosScreen() {
                         {lugaresFavoritos.map((lugar) => (
                             <Pressable
                                 key={lugar.id}
-                                style={styles.card}
+                                style={themedStyles.card}
                                 onPress={() => abrirLugar(lugar.id)}
                             >
                                 <Image
                                     source={lugar.imagen}
-                                    style={styles.image}
+                                    style={themedStyles.image}
                                     resizeMode="cover"
                                 />
 
-                                <View style={styles.cardContent}>
+                                <View style={themedStyles.cardContent}>
                                     <Text
-                                        style={styles.category}
+                                        style={themedStyles.category}
                                         numberOfLines={1}
                                     >
                                         {lugar.categoria}
                                     </Text>
 
                                     <Text
-                                        style={styles.placeName}
+                                        style={themedStyles.placeName}
                                         numberOfLines={2}
                                     >
                                         {lugar.nombre}
                                     </Text>
 
                                     <Text
-                                        style={styles.address}
+                                        style={themedStyles.address}
                                         numberOfLines={2}
                                     >
                                         {lugar.direccion}
@@ -222,13 +224,13 @@ export default function FavoritosScreen() {
                                 </View>
 
                                 <Pressable
-                                    style={styles.removeButton}
+                                    style={themedStyles.removeButton}
                                     onPress={(event) => {
                                         event.stopPropagation();
                                         quitarFavorito(lugar.apiId ?? lugar.id);
                                     }}
                                 >
-                                    <Text style={styles.removeIcon}>♥</Text>
+                                    <Text style={themedStyles.removeIcon}>♥</Text>
                                 </Pressable>
                             </Pressable>
                         ))}

@@ -1,21 +1,16 @@
+import { useThemeContext } from "@/contexts/theme-context";
+import { obtenerRolActual } from "@/servicios/autenticacion";
+import { router, usePathname } from "expo-router";
+import { useEffect, useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { useEffect, useState } from 'react';
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { router, usePathname } from 'expo-router';
-
-import { obtenerRolActual } from '@/servicios/autenticacion';
-
-type Rol = 'admin' | 'turista' | null;
+type Rol = "admin" | "turista" | null;
 
 export default function BottomNav() {
   const pathname = usePathname();
   const [rol, setRol] = useState<Rol>(null);
   const [verificandoRol, setVerificandoRol] = useState(true);
+  const { colors } = useThemeContext();
 
   useEffect(() => {
     let activo = true;
@@ -48,50 +43,53 @@ export default function BottomNav() {
   }, [pathname]);
 
   // No mostrar la barra en las pantallas de autenticación.
-  if (
-    pathname === '/login' ||
-    pathname === '/registro' ||
-    verificandoRol
-  ) {
+  if (pathname === "/login" || pathname === "/registro" || verificandoRol) {
     return null;
   }
 
   const opciones = [
     {
-      titulo: 'Mapa',
-      icono: '🗺️',
-      ruta: '/',
+      titulo: "Mapa",
+      icono: "🗺️",
+      ruta: "/",
     },
     {
-      titulo: 'Mi recorrido',
-      icono: '🧭',
-      ruta: '/mi-recorrido',
+      titulo: "Mi recorrido",
+      icono: "🧭",
+      ruta: "/mi-recorrido",
     },
     {
-      titulo: 'Mi perfil',
-      icono: '👤',
-      ruta: '/yo',
+      titulo: "Mi perfil",
+      icono: "👤",
+      ruta: "/yo",
     },
-    rol === 'admin'
+    rol === "admin"
       ? {
-        titulo: 'Administración',
-        icono: '⚙️',
-        ruta: '/administracion',
-      }
+          titulo: "Administración",
+          icono: "⚙️",
+          ruta: "/administracion",
+        }
       : {
-        titulo: 'Agenda',
-        icono: '📅',
-        ruta: '/agenda',
-      },
+          titulo: "Agenda",
+          icono: "📅",
+          ruta: "/agenda",
+        },
   ];
 
   return (
-    <View style={styles.contenedor}>
+    <View
+      style={[
+        styles.contenedor,
+        {
+          backgroundColor: colors.backgroundElement,
+          borderTopColor: colors.backgroundSelected,
+        },
+      ]}
+    >
       {opciones.map((opcion) => {
         const activo =
           pathname === opcion.ruta ||
-          (opcion.ruta !== '/' &&
-            pathname.startsWith(`${opcion.ruta}/`));
+          (opcion.ruta !== "/" && pathname.startsWith(`${opcion.ruta}/`));
 
         return (
           <Pressable
@@ -105,6 +103,9 @@ export default function BottomNav() {
               style={[
                 styles.texto,
                 activo && styles.textoActivo,
+                {
+                  color: activo ? colors.text : colors.textSecondary,
+                },
               ]}
               numberOfLines={1}
             >
@@ -120,18 +121,18 @@ export default function BottomNav() {
 const styles = StyleSheet.create({
   contenedor: {
     height: 70,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
-    borderTopColor: '#E8E5DD',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
+    borderTopColor: "#E8E5DD",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
     paddingHorizontal: 5,
   },
   opcion: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: 4,
   },
   icono: {
@@ -139,11 +140,11 @@ const styles = StyleSheet.create({
   },
   texto: {
     fontSize: 10,
-    color: '#77736B',
-    fontWeight: '600',
+    color: "#77736B",
+    fontWeight: "600",
   },
   textoActivo: {
-    color: '#253A32',
-    fontWeight: '800',
+    color: "#253A32",
+    fontWeight: "800",
   },
 });
