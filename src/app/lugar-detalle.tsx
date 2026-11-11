@@ -412,6 +412,61 @@ export default function LugarDetalleScreen() {
   };
 
   // --------------------------------------------------
+  // REGISTRO MANUAL DE VISITA
+  // --------------------------------------------------
+
+  const registrarVisitaManual = async () => {
+    if (!lugar) return;
+
+    if (visitaRegistrada) {
+      Alert.alert(
+        'Visita ya registrada',
+        'Ya registraste tu visita a este lugar.'
+      );
+
+      return;
+    }
+
+    try {
+      const usuario = await obtenerUsuarioActual();
+
+      if (!usuario) {
+        Alert.alert(
+          'Necesitás iniciar sesión',
+          'Para guardar una visita en tu recorrido necesitás iniciar sesión.'
+        );
+
+        return;
+      }
+
+      const nuevaVisita: Visita = {
+        id: `vis-${Date.now()}`,
+        usuarioId: usuario.id,
+        lugarId: lugar.id,
+        fechaHora: new Date().toISOString(),
+        origen: 'manual',
+        fotoUri: null,
+        nota: null,
+        sincronizada: false,
+      };
+
+      await guardarVisita(nuevaVisita);
+      setVisitaRegistrada(true);
+
+      Alert.alert(
+        'Visita agregada',
+        `Registraste manualmente tu visita a ${lugar.nombre}.`
+      );
+    } catch (error) {
+      console.error('Error al guardar la visita manual:', error);
+      Alert.alert(
+        'No se pudo guardar la visita',
+        'Intentá nuevamente en unos segundos.'
+      );
+    }
+  };
+
+  // --------------------------------------------------
   // REGISTRO DE VISITA MEDIANTE GPS
   // --------------------------------------------------
 
@@ -1023,11 +1078,7 @@ export default function LugarDetalleScreen() {
                   style={themedStyles.visitOption}
                   onPress={() => {
                     setMostrarOpcionesVisita(false);
-
-                    Alert.alert(
-                      'Registro manual',
-                      'El registro manual lo agregaremos en el próximo paso.'
-                    );
+                    registrarVisitaManual();
                   }}
                 >
                   <Text style={themedStyles.visitOptionIcon}>
@@ -1040,7 +1091,7 @@ export default function LugarDetalleScreen() {
                     </Text>
 
                     <Text style={themedStyles.visitOptionText}>
-                      Elegí esta opción si querés registrar la visita manualmente.
+                      Guarda la visita sin comprobar tu ubicación.
                     </Text>
                   </View>
                 </Pressable>
