@@ -1,4 +1,5 @@
 import BottomNav from "@/components/bottom-nav";
+import AvisoDeConexion from "@/components/aviso-de-conexion";
 import { ThemeProvider, useThemeContext } from "@/contexts/theme-context";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -25,6 +26,7 @@ function AppLayoutContent() {
             contentStyle: { backgroundColor: colors.background },
           }}
         />
+        <AvisoDeConexion />
         <BottomNav />
       </View>
     </SafeAreaView>
