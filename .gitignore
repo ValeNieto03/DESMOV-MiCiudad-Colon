@@ -41,3 +41,6 @@ example
 # generated native folders
 /ios
 /android
+
+# Copias de seguridad locales
+/package-lock.sdk57-backup.json
