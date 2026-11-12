@@ -2,7 +2,9 @@
 import * as SQLite from 'expo-sqlite';
 import type { Place } from '@/data/lugares';
 
-export type OrigenVisita = 'qr' | 'gps' | 'manual';
+// `demo` solo se conserva para reconocer visitas antiguas guardadas en SQLite;
+// la app actual no crea ese tipo de visita ni lo envía a la API.
+export type OrigenVisita = 'qr' | 'gps' | 'manual' | 'demo';
 
 export interface Visita {
   id: string;
