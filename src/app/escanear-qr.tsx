@@ -12,6 +12,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { lugares } from '@/data/lugares';
+import { confirmarVisitaGuardada } from '@/servicios/confirmacion-visita';
 
 import {
     obtenerUsuarioActual,
@@ -212,6 +213,7 @@ export default function EscanearQRScreen() {
 
                 try {
                     guardarVisita(nuevaVisita);
+                    void confirmarVisitaGuardada();
 
                     console.log(
                         '✅ VISITA QR GUARDADA:',

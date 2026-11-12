@@ -1,5 +1,6 @@
 import { useThemedStyles } from "@/hooks/use-theme";
 import { useThemeContext } from '@/contexts/theme-context';
+import { confirmarVisitaGuardada } from '@/servicios/confirmacion-visita';
 import { Directory, File, Paths } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useState } from 'react';
@@ -512,6 +513,7 @@ export default function LugarDetalleScreen() {
       };
 
       await guardarVisita(nuevaVisita);
+      void confirmarVisitaGuardada();
       setVisitaRegistrada(true);
       setMostrarFormularioVisita(false);
 
@@ -696,6 +698,7 @@ export default function LugarDetalleScreen() {
       // ----------------------------------------------
 
       await guardarVisita(nuevaVisita);
+      void confirmarVisitaGuardada();
 
       console.log(
         '✅ VISITA GPS GUARDADA:',
