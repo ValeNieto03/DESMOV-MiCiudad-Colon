@@ -342,14 +342,14 @@ export default function AgendaScreen() {
                     onPress={() => alternarEvento(evento)}
                     disabled={
                       actualizandoId !== null ||
-                      evento.estado === 'suspendido'
+                      (evento.estado === 'suspendido' && !guardado)
                     }
                   >
                     {actualizando ? (
                       <ActivityIndicator color={colors.onPrimary} />
                     ) : (
                       <Text style={themedStyles.textoBotonAgendar}>
-                        {evento.estado === 'suspendido'
+                        {evento.estado === 'suspendido' && !guardado
                           ? 'Evento suspendido'
                           : guardado
                             ? '✓ Quitar de mi agenda'
