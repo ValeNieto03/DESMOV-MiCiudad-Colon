@@ -18,7 +18,6 @@ import {
   EventoAPI,
   LugarAPI,
   prepararUrlImagen,
-  obtenerEventosGuardadosAPI,
   guardarEventoAPI,
   quitarEventoGuardadoAPI,
 } from '@/servicios/api';
@@ -48,17 +47,27 @@ export default function AgendaScreen() {
   const cargarAgenda = useCallback(async () => {
     setCargando(true);
     setError('');
+    const controlador = new AbortController();
+    const tiempoLimite = setTimeout(() => controlador.abort(), 8000);
 
     try {
       const [eventosObtenidos, lugaresObtenidos] = await Promise.all([
-        consultarAPI<EventoAPI[]>('/eventos?porPagina=100'),
-        consultarAPI<LugarAPI[]>('/lugares?porPagina=500'),
+        consultarAPI<EventoAPI[]>('/eventos?porPagina=100', {
+          signal: controlador.signal,
+        }),
+        consultarAPI<LugarAPI[]>('/lugares?porPagina=500', {
+          signal: controlador.signal,
+        }),
       ]);
 
       let guardadosObtenidos: EventoAPI[] = [];
 
       try {
-        guardadosObtenidos = await obtenerEventosGuardadosAPI();
+        guardadosObtenidos = await consultarAPI<EventoAPI[]>(
+          '/yo/eventos-guardados?porPagina=100',
+          { signal: controlador.signal },
+          true,
+        );
       } catch (errorGuardados) {
         console.log(
           'No se pudieron cargar los eventos personales guardados:',
@@ -75,6 +84,7 @@ export default function AgendaScreen() {
 
       setError(mensaje);
     } finally {
+      clearTimeout(tiempoLimite);
       setCargando(false);
     }
   }, []);
@@ -204,7 +214,7 @@ export default function AgendaScreen() {
         <View style={themedStyles.estado}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={themedStyles.textoEstado}>
-            Buscando próximos eventos...
+            Conectando con el servidor para cargar próximos eventos...
           </Text>
         </View>
       ) : error ? (
@@ -215,7 +225,7 @@ export default function AgendaScreen() {
 
           <Text style={themedStyles.textoEstado}>
             {error === 'API_NO_DISPONIBLE'
-              ? 'No se pudo conectar con el servidor. Revisá tu conexión.'
+              ? 'No se puede conectar con el servidor. Comuniquese con Administración'
               : error === 'SESION_NO_INICIADA' ||
                 error === 'SESION_NO_VALIDA' ||
                 error === 'NO_AUTENTICADO'
