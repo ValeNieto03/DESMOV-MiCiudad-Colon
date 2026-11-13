@@ -1,9 +1,19 @@
+import { useThemeContext } from "@/contexts/theme-context";
+import type { Place } from "@/data/lugares";
+import { lugares } from "@/data/lugares";
 import { useThemedStyles } from "@/hooks/use-theme";
-import { useThemeContext } from '@/contexts/theme-context';
-import { confirmarVisitaGuardada } from '@/servicios/confirmacion-visita';
-import { Directory, File, Paths } from 'expo-file-system';
-import * as ImagePicker from 'expo-image-picker';
-import { useCallback, useEffect, useState } from 'react';
+import {
+  obtenerAudioguiaActivaAPI,
+  type AudioguiaActivaAPI,
+} from "@/servicios/api";
+import { confirmarVisitaGuardada } from "@/servicios/confirmacion-visita";
+import { obtenerLugaresIntegrados } from "@/servicios/lugares-integrados";
+import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
+import { Directory, File, Paths } from "expo-file-system";
+import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -11,47 +21,21 @@ import {
   Linking,
   Modal,
   Pressable,
-  TextInput,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  useLocalSearchParams,
-  useRouter,
-  useFocusEffect,
-} from 'expo-router';
-import { lugares } from '@/data/lugares';
-import type { Place } from '@/data/lugares';
-import { obtenerLugaresIntegrados } from '@/servicios/lugares-integrados';
-import {
-  obtenerAudioguiaActivaAPI,
-  type AudioguiaActivaAPI,
-} from '@/servicios/api';
-import * as Location from 'expo-location';
-import {
-  useAudioPlayer,
-  useAudioPlayerStatus,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-} from 'expo-audio';
+import { obtenerSesion, obtenerUsuarioActual } from "@/servicios/autenticacion";
 
-import {
-  obtenerSesion,
-  obtenerUsuarioActual,
-} from '@/servicios/autenticacion';
+import { guardarVisita, Visita } from "@/servicios/visitas";
 
-import {
-  guardarVisita,
-  Visita,
-} from '@/servicios/visitas';
+import { alternarFavorito, esFavorito } from "@/servicios/favoritos";
 
-import {
-  esFavorito,
-  alternarFavorito,
-} from '@/servicios/favoritos';
-
+import Storage from "expo-sqlite/kv-store";
 // --------------------------------------------------
 // MODO DE PRUEBA
 // --------------------------------------------------
@@ -63,6 +47,12 @@ import {
 //
 
 const MODO_PRUEBA_GPS = true;
+const PENDING_MANUAL_CAMERA_KEY = "mi-ciudad-pending-manual-visit-camera";
+
+type PendingManualCamera = {
+  lugarId: string;
+  nota: string;
+};
 
 export default function LugarDetalleScreen() {
   const themedStyles = useThemedStyles(styles);
@@ -82,25 +72,20 @@ export default function LugarDetalleScreen() {
   const [lugaresDisponibles, setLugaresDisponibles] =
     useState<Place[]>(lugares);
 
-  const [cargandoLugar, setCargandoLugar] =
-    useState(true);
+  const [cargandoLugar, setCargandoLugar] = useState(true);
 
   useEffect(() => {
     let componenteActivo = true;
 
     async function cargarLugares() {
       try {
-        const lugaresIntegrados =
-          await obtenerLugaresIntegrados();
+        const lugaresIntegrados = await obtenerLugaresIntegrados();
 
         if (componenteActivo) {
           setLugaresDisponibles(lugaresIntegrados);
         }
       } catch (error) {
-        console.warn(
-          'No se pudieron cargar los lugares integrados:',
-          error
-        );
+        console.warn("No se pudieron cargar los lugares integrados:", error);
       } finally {
         if (componenteActivo) {
           setCargandoLugar(false);
@@ -115,9 +100,10 @@ export default function LugarDetalleScreen() {
     };
   }, []);
 
-  const lugar = lugaresDisponibles.find(
-    (item) => item.id === idLugar
-  );
+  const lugar = lugaresDisponibles.find((item) => item.id === idLugar);
+  const lugarIdAPI =
+    lugar?.apiId ??
+    (lugar?.id.startsWith('lug-') ? lugar.id : null);
 
   const [audioguiaActiva, setAudioguiaActiva] =
     useState<AudioguiaActivaAPI | null>(null);
@@ -126,7 +112,7 @@ export default function LugarDetalleScreen() {
     let componenteActivo = true;
 
     async function cargarAudioguiaActiva() {
-      if (!lugar?.id) {
+      if (!lugarIdAPI) {
         setAudioguiaActiva(null);
         return;
       }
@@ -134,17 +120,13 @@ export default function LugarDetalleScreen() {
       setAudioguiaActiva(null);
 
       try {
-        const audioguia =
-          await obtenerAudioguiaActivaAPI(lugar.id);
+        const audioguia = await obtenerAudioguiaActivaAPI(lugarIdAPI);
 
         if (componenteActivo) {
           setAudioguiaActiva(audioguia);
         }
       } catch (error) {
-        console.warn(
-          'No se pudo consultar la audioguía activa:',
-          error
-        );
+        console.warn("No se pudo consultar la audioguía activa:", error);
       }
     }
 
@@ -153,30 +135,77 @@ export default function LugarDetalleScreen() {
     return () => {
       componenteActivo = false;
     };
-  }, [lugar?.id]);
+  }, [lugarIdAPI]);
 
   const audioParaReproducir = audioguiaActiva?.url
     ? { uri: audioguiaActiva.url }
     : lugar?.audio;
 
   const transcripcionParaMostrar =
-    audioguiaActiva?.transcripcion ||
-    lugar?.transcripcion;
+    audioguiaActiva?.transcripcion || lugar?.transcripcion;
 
-  const [mostrarTranscripcion, setMostrarTranscripcion] =
-    useState(false);
+  const [mostrarTranscripcion, setMostrarTranscripcion] = useState(false);
 
-  const [visitaRegistrada, setVisitaRegistrada] =
-    useState(false);
+  const [visitaRegistrada, setVisitaRegistrada] = useState(false);
 
-  const [mostrarOpcionesVisita, setMostrarOpcionesVisita] =
-    useState(false);
-  const [mostrarFormularioVisita, setMostrarFormularioVisita] =
-    useState(false);
-  const [notaVisita, setNotaVisita] = useState('');
+  const [mostrarOpcionesVisita, setMostrarOpcionesVisita] = useState(false);
+  const [mostrarFormularioVisita, setMostrarFormularioVisita] = useState(false);
+  const [notaVisita, setNotaVisita] = useState("");
   const [fotoVisita, setFotoVisita] = useState<string | null>(null);
-  const [guardandoVisitaManual, setGuardandoVisitaManual] =
-    useState(false);
+  const [guardandoVisitaManual, setGuardandoVisitaManual] = useState(false);
+  useEffect(() => {
+    let componenteActivo = true;
+
+    async function recuperarFotoPendiente() {
+      try {
+        const borradorGuardado = await Storage.getItemAsync(
+          PENDING_MANUAL_CAMERA_KEY,
+        );
+
+        if (!borradorGuardado) return;
+
+        const borrador = JSON.parse(borradorGuardado) as PendingManualCamera;
+
+        // Solo recuperamos la foto en el lugar donde se inició el registro.
+        if (borrador.lugarId !== idLugar) return;
+
+        const resultado = await ImagePicker.getPendingResultAsync();
+
+        if (!componenteActivo) return;
+
+        setNotaVisita(borrador.nota);
+        setMostrarFormularioVisita(true);
+
+        if (!resultado) {
+          Alert.alert(
+            "No se recuperó la foto",
+            "Podés volver a intentarlo. La nota del registro fue recuperada.",
+          );
+        } else if ("code" in resultado) {
+          console.error("Error al recuperar la foto pendiente:", resultado);
+          Alert.alert(
+            "No se pudo recuperar la foto",
+            "Podés volver a sacarla. La nota del registro fue recuperada.",
+          );
+        } else if (!resultado.canceled && resultado.assets[0]) {
+          setFotoVisita(resultado.assets[0].uri);
+        }
+
+        await Storage.removeItemAsync(PENDING_MANUAL_CAMERA_KEY);
+      } catch (error) {
+        console.error("Error al recuperar la foto pendiente:", error);
+        await Storage.removeItemAsync(PENDING_MANUAL_CAMERA_KEY).catch(
+          () => undefined,
+        );
+      }
+    }
+
+    void recuperarFotoPendiente();
+
+    return () => {
+      componenteActivo = false;
+    };
+  }, [idLugar]);
 
   // --------------------------------------------------
   // FAVORITOS
@@ -184,8 +213,7 @@ export default function LugarDetalleScreen() {
 
   const [favorito, setFavorito] = useState(false);
 
-  const [cargandoFavorito, setCargandoFavorito] =
-    useState(false);
+  const [cargandoFavorito, setCargandoFavorito] = useState(false);
 
   const player = useAudioPlayer(lugar?.audio);
 
@@ -200,12 +228,9 @@ export default function LugarDetalleScreen() {
       return () => {
         player.pause();
 
-        console.log(
-          'Audioguía pausada al salir del detalle:',
-          lugar?.id
-        );
+        console.log("Audioguía pausada al salir del detalle:", lugar?.id);
       };
-    }, [player, lugar?.id])
+    }, [player, lugar?.id]),
   );
 
   // --------------------------------------------------
@@ -230,24 +255,18 @@ export default function LugarDetalleScreen() {
           return;
         }
 
-        const resultado = await esFavorito(
-          usuario.id,
-          lugar.apiId ?? lugar.id
-        );
+        const resultado = await esFavorito(usuario.id, lugar.apiId ?? lugar.id);
 
         if (!componenteActivo) return;
 
         setFavorito(resultado);
 
-        console.log('❤️ Estado favorito:', {
-          lugarId: lugar.id,
+        console.log("❤️ Estado favorito:", {
+          lugarId: lugar.apiId ?? lugar.id,
           favorito: resultado,
         });
       } catch (error) {
-        console.error(
-          '❌ Error al comprobar favorito:',
-          error
-        );
+        console.error("❌ Error al comprobar favorito:", error);
 
         if (componenteActivo) {
           setFavorito(false);
@@ -260,7 +279,7 @@ export default function LugarDetalleScreen() {
     return () => {
       componenteActivo = false;
     };
-  }, [lugar?.id]);
+  }, [lugar?.id, lugar?.apiId]);
 
   // --------------------------------------------------
   // ALTERNAR FAVORITO
@@ -276,18 +295,18 @@ export default function LugarDetalleScreen() {
 
       if (!sesion) {
         Alert.alert(
-          'Necesitás iniciar sesión',
-          'Para guardar lugares como favoritos necesitás tener una cuenta.',
+          "Necesitás iniciar sesión",
+          "Para guardar lugares como favoritos necesitás tener una cuenta.",
           [
             {
-              text: 'Cancelar',
-              style: 'cancel',
+              text: "Cancelar",
+              style: "cancel",
             },
             {
-              text: 'Iniciar sesión',
-              onPress: () => router.push('/login'),
+              text: "Iniciar sesión",
+              onPress: () => router.push("/login"),
             },
-          ]
+          ],
         );
 
         return;
@@ -297,31 +316,28 @@ export default function LugarDetalleScreen() {
 
       const nuevoEstado = await alternarFavorito(
         sesion.usuario.id,
-        lugar.apiId ?? lugar.id
+        lugar.apiId ?? lugar.id,
       );
 
       setFavorito(nuevoEstado);
 
       if (nuevoEstado) {
         Alert.alert(
-          '¡Agregado a favoritos!',
-          `${lugar.nombre} se guardó en tus favoritos.`
+          "¡Agregado a favoritos!",
+          `${lugar.nombre} se guardó en tus favoritos.`,
         );
       } else {
         Alert.alert(
-          'Eliminado de favoritos',
-          `${lugar.nombre} se eliminó de tus favoritos.`
+          "Eliminado de favoritos",
+          `${lugar.nombre} se eliminó de tus favoritos.`,
         );
       }
     } catch (error) {
-      console.error(
-        '❌ Error al modificar favorito:',
-        error
-      );
+      console.error("❌ Error al modificar favorito:", error);
 
       Alert.alert(
-        'No se pudo actualizar el favorito',
-        'Intentá nuevamente en unos segundos.'
+        "No se pudo actualizar el favorito",
+        "Intentá nuevamente en unos segundos.",
       );
     } finally {
       setCargandoFavorito(false);
@@ -332,14 +348,11 @@ export default function LugarDetalleScreen() {
   // AUDIO
   // --------------------------------------------------
 
-
-
-
   const alternarAudio = async () => {
     if (!audioParaReproducir) {
       Alert.alert(
-        'Audioguía no disponible',
-        'La audioguía de este lugar todavía no está disponible.'
+        "Audioguía no disponible",
+        "La audioguía de este lugar todavía no está disponible.",
       );
       return;
     }
@@ -353,25 +366,17 @@ export default function LugarDetalleScreen() {
       await player.replace(audioParaReproducir);
       player.play();
 
-      console.log('ID DEL LUGAR:', lugar?.id);
-      console.log(
-        'AUDIO REPRODUCIDO:',
-        JSON.stringify(audioParaReproducir)
-      );
+      console.log("ID DEL LUGAR:", lugar?.id);
+      console.log("AUDIO REPRODUCIDO:", JSON.stringify(audioParaReproducir));
     } catch (error) {
-      console.error(
-        'Error al reproducir la audioguía:',
-        error
-      );
+      console.error("Error al reproducir la audioguía:", error);
 
       Alert.alert(
-        'Error de reproducción',
-        'No se pudo cargar la audioguía. Intentá nuevamente.'
+        "Error de reproducción",
+        "No se pudo cargar la audioguía. Intentá nuevamente.",
       );
     }
   };
-
-
 
   // --------------------------------------------------
   // COMPROBAR SESIÓN ANTES DE REGISTRAR UNA VISITA
@@ -383,18 +388,18 @@ export default function LugarDetalleScreen() {
 
       if (!sesion) {
         Alert.alert(
-          'Necesitás iniciar sesión',
-          'Para registrar una visita necesitás tener una cuenta.',
+          "Necesitás iniciar sesión",
+          "Para registrar una visita necesitás tener una cuenta.",
           [
             {
-              text: 'Cancelar',
-              style: 'cancel',
+              text: "Cancelar",
+              style: "cancel",
             },
             {
-              text: 'Iniciar sesión',
-              onPress: () => router.push('/login'),
+              text: "Iniciar sesión",
+              onPress: () => router.push("/login"),
             },
-          ]
+          ],
         );
 
         return;
@@ -402,8 +407,8 @@ export default function LugarDetalleScreen() {
 
       if (visitaRegistrada) {
         Alert.alert(
-          'Visita ya registrada',
-          'Ya registraste tu visita a este lugar.'
+          "Visita ya registrada",
+          "Ya registraste tu visita a este lugar.",
         );
 
         return;
@@ -411,14 +416,11 @@ export default function LugarDetalleScreen() {
 
       setMostrarOpcionesVisita(true);
     } catch (error) {
-      console.error(
-        '❌ Error al comprobar la sesión:',
-        error
-      );
+      console.error("❌ Error al comprobar la sesión:", error);
 
       Alert.alert(
-        'No se pudo comprobar la sesión',
-        'Intentá nuevamente en unos segundos.'
+        "No se pudo comprobar la sesión",
+        "Intentá nuevamente en unos segundos.",
       );
     }
   };
@@ -433,31 +435,44 @@ export default function LugarDetalleScreen() {
 
       if (!permiso.granted) {
         Alert.alert(
-          'Permiso de cámara necesario',
-          'Permití el acceso a la cámara para adjuntar una foto a la visita.'
+          "Permiso de cámara necesario",
+          "Permití el acceso a la cámara para adjuntar una foto a la visita.",
         );
         return;
       }
 
+      await Storage.setItemAsync(
+        PENDING_MANUAL_CAMERA_KEY,
+        JSON.stringify({
+          lugarId: lugar?.id,
+          nota: notaVisita,
+        }),
+      );
+
       const resultado = await ImagePicker.launchCameraAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ["images"],
         quality: 0.8,
       });
+
+      await Storage.removeItemAsync(PENDING_MANUAL_CAMERA_KEY);
 
       if (!resultado.canceled && resultado.assets[0]) {
         setFotoVisita(resultado.assets[0].uri);
       }
     } catch (error) {
-      console.error('Error al tomar la foto de la visita:', error);
-      Alert.alert('No se pudo abrir la cámara', 'Intentá nuevamente.');
+      await Storage.removeItemAsync(PENDING_MANUAL_CAMERA_KEY).catch(
+        () => undefined,
+      );
+      console.error("Error al tomar la foto de la visita:", error);
+      Alert.alert("No se pudo abrir la cámara", "Intentá nuevamente.");
     }
   };
 
   const guardarFotoEnElTelefono = async (
     uriTemporal: string,
-    idVisita: string
+    idVisita: string,
   ) => {
-    const directorio = new Directory(Paths.document, 'visitas');
+    const directorio = new Directory(Paths.document, "visitas");
 
     if (!directorio.exists) {
       directorio.create({ intermediates: true });
@@ -476,8 +491,8 @@ export default function LugarDetalleScreen() {
 
     if (visitaRegistrada) {
       Alert.alert(
-        'Visita ya registrada',
-        'Ya registraste tu visita a este lugar.'
+        "Visita ya registrada",
+        "Ya registraste tu visita a este lugar.",
       );
 
       return;
@@ -489,8 +504,8 @@ export default function LugarDetalleScreen() {
 
       if (!usuario) {
         Alert.alert(
-          'Necesitás iniciar sesión',
-          'Para guardar una visita en tu recorrido necesitás iniciar sesión.'
+          "Necesitás iniciar sesión",
+          "Para guardar una visita en tu recorrido necesitás iniciar sesión.",
         );
 
         return;
@@ -506,7 +521,7 @@ export default function LugarDetalleScreen() {
         usuarioId: usuario.id,
         lugarId: lugar.id,
         fechaHora: new Date().toISOString(),
-        origen: 'manual',
+        origen: "manual",
         fotoUri: fotoUriGuardada,
         nota: notaVisita.trim() || null,
         sincronizada: false,
@@ -518,14 +533,14 @@ export default function LugarDetalleScreen() {
       setMostrarFormularioVisita(false);
 
       Alert.alert(
-        'Visita agregada',
-        `Registraste manualmente tu visita a ${lugar.nombre}.`
+        "Visita agregada",
+        `Registraste manualmente tu visita a ${lugar.nombre}.`,
       );
     } catch (error) {
-      console.error('Error al guardar la visita manual:', error);
+      console.error("Error al guardar la visita manual:", error);
       Alert.alert(
-        'No se pudo guardar la visita',
-        'Intentá nuevamente en unos segundos.'
+        "No se pudo guardar la visita",
+        "Intentá nuevamente en unos segundos.",
       );
     } finally {
       setGuardandoVisitaManual(false);
@@ -541,8 +556,8 @@ export default function LugarDetalleScreen() {
 
     if (visitaRegistrada) {
       Alert.alert(
-        'Visita ya registrada',
-        'Ya registraste tu visita a este lugar.'
+        "Visita ya registrada",
+        "Ya registraste tu visita a este lugar.",
       );
 
       return;
@@ -557,8 +572,8 @@ export default function LugarDetalleScreen() {
 
       if (!usuario) {
         Alert.alert(
-          'Necesitás iniciar sesión',
-          'Para registrar una visita necesitás tener una cuenta.'
+          "Necesitás iniciar sesión",
+          "Para registrar una visita necesitás tener una cuenta.",
         );
 
         return;
@@ -568,13 +583,12 @@ export default function LugarDetalleScreen() {
       // PEDIR PERMISO DE UBICACIÓN
       // ----------------------------------------------
 
-      const { status } =
-        await Location.requestForegroundPermissionsAsync();
+      const { status } = await Location.requestForegroundPermissionsAsync();
 
-      if (status !== 'granted') {
+      if (status !== "granted") {
         Alert.alert(
-          'Ubicación necesaria',
-          'Necesitamos acceder a tu ubicación para comprobar que estás en este lugar.'
+          "Ubicación necesaria",
+          "Necesitamos acceder a tu ubicación para comprobar que estás en este lugar.",
         );
 
         return;
@@ -595,9 +609,9 @@ export default function LugarDetalleScreen() {
         latUsuario = lugar.latitud;
         lonUsuario = lugar.longitud;
 
-        console.log('🧪 MODO PRUEBA GPS ACTIVADO');
+        console.log("🧪 MODO PRUEBA GPS ACTIVADO");
 
-        console.log('📍 Ubicación simulada:', {
+        console.log("📍 Ubicación simulada:", {
           latitud: latUsuario,
           longitud: lonUsuario,
         });
@@ -606,15 +620,14 @@ export default function LugarDetalleScreen() {
         // GPS REAL
         // --------------------------------------------
 
-        const ubicacion =
-          await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.High,
-          });
+        const ubicacion = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
 
         latUsuario = ubicacion.coords.latitude;
         lonUsuario = ubicacion.coords.longitude;
 
-        console.log('📍 GPS REAL:', {
+        console.log("📍 GPS REAL:", {
           latitud: latUsuario,
           longitud: lonUsuario,
         });
@@ -624,8 +637,7 @@ export default function LugarDetalleScreen() {
       // CALCULAR DISTANCIA
       // ----------------------------------------------
 
-      const diferenciaLatitud =
-        ((lugar.latitud - latUsuario) * Math.PI) / 180;
+      const diferenciaLatitud = ((lugar.latitud - latUsuario) * Math.PI) / 180;
 
       const diferenciaLongitud =
         ((lugar.longitud - lonUsuario) * Math.PI) / 180;
@@ -633,37 +645,27 @@ export default function LugarDetalleScreen() {
       const radioTierra = 6371000;
 
       const a =
-        Math.sin(diferenciaLatitud / 2) *
-        Math.sin(diferenciaLatitud / 2) +
+        Math.sin(diferenciaLatitud / 2) * Math.sin(diferenciaLatitud / 2) +
         Math.cos((latUsuario * Math.PI) / 180) *
-        Math.cos((lugar.latitud * Math.PI) / 180) *
-        Math.sin(diferenciaLongitud / 2) *
-        Math.sin(diferenciaLongitud / 2);
+          Math.cos((lugar.latitud * Math.PI) / 180) *
+          Math.sin(diferenciaLongitud / 2) *
+          Math.sin(diferenciaLongitud / 2);
 
-      const c =
-        2 *
-        Math.atan2(
-          Math.sqrt(a),
-          Math.sqrt(1 - a)
-        );
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
       const distanciaMetros = radioTierra * c;
 
-      console.log('📍 UBICACIÓN USUARIO:', {
+      console.log("📍 UBICACIÓN USUARIO:", {
         latitud: latUsuario,
         longitud: lonUsuario,
       });
 
-      console.log('📍 UBICACIÓN LUGAR:', {
+      console.log("📍 UBICACIÓN LUGAR:", {
         latitud: lugar.latitud,
         longitud: lugar.longitud,
       });
 
-      console.log(
-        '📏 DISTANCIA:',
-        distanciaMetros,
-        'metros'
-      );
+      console.log("📏 DISTANCIA:", distanciaMetros, "metros");
 
       // ----------------------------------------------
       // COMPROBAR DISTANCIA
@@ -671,8 +673,8 @@ export default function LugarDetalleScreen() {
 
       if (distanciaMetros > 100) {
         Alert.alert(
-          'Estás demasiado lejos',
-          `Para registrar la visita tenés que estar cerca de ${lugar.nombre}.`
+          "Estás demasiado lejos",
+          `Para registrar la visita tenés que estar cerca de ${lugar.nombre}.`,
         );
 
         return;
@@ -687,7 +689,7 @@ export default function LugarDetalleScreen() {
         usuarioId: usuario.id,
         lugarId: lugar.id,
         fechaHora: new Date().toISOString(),
-        origen: 'gps',
+        origen: "gps",
         fotoUri: null,
         nota: null,
         sincronizada: false,
@@ -700,26 +702,20 @@ export default function LugarDetalleScreen() {
       await guardarVisita(nuevaVisita);
       void confirmarVisitaGuardada();
 
-      console.log(
-        '✅ VISITA GPS GUARDADA:',
-        nuevaVisita
-      );
+      console.log("✅ VISITA GPS GUARDADA:", nuevaVisita);
 
       setVisitaRegistrada(true);
 
       Alert.alert(
-        '¡Visita registrada!',
-        `Tu visita a ${lugar.nombre} fue registrada correctamente.`
+        "¡Visita registrada!",
+        `Tu visita a ${lugar.nombre} fue registrada correctamente.`,
       );
     } catch (error) {
-      console.error(
-        '❌ Error al registrar visita mediante GPS:',
-        error
-      );
+      console.error("❌ Error al registrar visita mediante GPS:", error);
 
       Alert.alert(
-        'No se pudo registrar la visita',
-        'Intentá nuevamente en unos segundos.'
+        "No se pudo registrar la visita",
+        "Intentá nuevamente en unos segundos.",
       );
     }
   };
@@ -732,13 +728,12 @@ export default function LugarDetalleScreen() {
     if (!lugar) return;
 
     try {
-      const { status } =
-        await Location.requestForegroundPermissionsAsync();
+      const { status } = await Location.requestForegroundPermissionsAsync();
 
-      if (status !== 'granted') {
+      if (status !== "granted") {
         Alert.alert(
-          'Ubicación necesaria',
-          'Necesitamos tu ubicación para calcular la ruta hasta este lugar.'
+          "Ubicación necesaria",
+          "Necesitamos tu ubicación para calcular la ruta hasta este lugar.",
         );
         return;
       }
@@ -751,7 +746,7 @@ export default function LugarDetalleScreen() {
       const origenLon = ubicacion.coords.longitude;
 
       const destino = encodeURIComponent(
-        `${lugar.nombre}, ${lugar.direccion}, Colón, Entre Ríos, Argentina`
+        `${lugar.nombre}, ${lugar.direccion}, Colón, Entre Ríos, Argentina`,
       );
 
       const url =
@@ -762,13 +757,12 @@ export default function LugarDetalleScreen() {
         `&travelmode=driving`;
 
       await Linking.openURL(url);
-
     } catch (error) {
-      console.error('Error al abrir la ruta:', error);
+      console.error("Error al abrir la ruta:", error);
 
       Alert.alert(
-        'No se pudo obtener la ubicación',
-        'Intentá nuevamente en unos segundos.'
+        "No se pudo obtener la ubicación",
+        "Intentá nuevamente en unos segundos.",
       );
     }
   };
@@ -782,8 +776,8 @@ export default function LugarDetalleScreen() {
 
     Linking.openURL(`tel:${lugar.telefono}`).catch(() => {
       Alert.alert(
-        'No se pudo realizar la llamada',
-        'Revisá el número de teléfono e intentá nuevamente.'
+        "No se pudo realizar la llamada",
+        "Revisá el número de teléfono e intentá nuevamente.",
       );
     });
   };
@@ -793,8 +787,8 @@ export default function LugarDetalleScreen() {
 
     Linking.openURL(lugar.web).catch(() => {
       Alert.alert(
-        'No se pudo abrir el sitio web',
-        'Intentá nuevamente en unos segundos.'
+        "No se pudo abrir el sitio web",
+        "Intentá nuevamente en unos segundos.",
       );
     });
   };
@@ -808,10 +802,7 @@ export default function LugarDetalleScreen() {
       <View style={themedStyles.screen}>
         <SafeAreaView style={themedStyles.container}>
           <View style={themedStyles.errorContainer}>
-            <ActivityIndicator
-              size="large"
-              color="#2F7F8F"
-            />
+            <ActivityIndicator size="large" color="#2F7F8F" />
 
             <Text style={themedStyles.loadingText}>
               Cargando información del lugar...
@@ -833,9 +824,7 @@ export default function LugarDetalleScreen() {
           <View style={themedStyles.errorContainer}>
             <Text style={themedStyles.errorIcon}>📍</Text>
 
-            <Text style={themedStyles.errorTitle}>
-              Lugar no encontrado
-            </Text>
+            <Text style={themedStyles.errorTitle}>Lugar no encontrado</Text>
 
             <Text style={themedStyles.errorText}>
               No pudimos encontrar la información de este lugar.
@@ -845,9 +834,7 @@ export default function LugarDetalleScreen() {
               style={themedStyles.backButtonLarge}
               onPress={() => router.back()}
             >
-              <Text style={themedStyles.backButtonText}>
-                Volver
-              </Text>
+              <Text style={themedStyles.backButtonText}>Volver</Text>
             </Pressable>
           </View>
         </SafeAreaView>
@@ -876,9 +863,7 @@ export default function LugarDetalleScreen() {
               <Text style={themedStyles.backIcon}>‹</Text>
             </Pressable>
 
-            <Text style={themedStyles.headerTitle}>
-              Detalle
-            </Text>
+            <Text style={themedStyles.headerTitle}>Detalle</Text>
 
             <Pressable
               style={[
@@ -894,7 +879,7 @@ export default function LugarDetalleScreen() {
                   favorito && themedStyles.favoriteIconActive,
                 ]}
               >
-                {favorito ? '♥' : '♡'}
+                {favorito ? "♥" : "♡"}
               </Text>
             </Pressable>
           </View>
@@ -909,31 +894,23 @@ export default function LugarDetalleScreen() {
                 resizeMode="cover"
               />
             ) : (
-              <Text style={themedStyles.heroIcon}>
-                {lugar.icono}
-              </Text>
+              <Text style={themedStyles.heroIcon}>{lugar.icono}</Text>
             )}
           </View>
 
           {/* Categoría */}
 
           <View style={themedStyles.categoryBadge}>
-            <Text style={themedStyles.categoryText}>
-              {lugar.categoria}
-            </Text>
+            <Text style={themedStyles.categoryText}>{lugar.categoria}</Text>
           </View>
 
           {/* Título */}
 
-          <Text style={themedStyles.title}>
-            {lugar.nombre}
-          </Text>
+          <Text style={themedStyles.title}>{lugar.nombre}</Text>
 
           {/* Descripción */}
 
-          <Text style={themedStyles.description}>
-            {lugar.descripcion}
-          </Text>
+          <Text style={themedStyles.description}>{lugar.descripcion}</Text>
 
           {/* Información */}
 
@@ -942,13 +919,9 @@ export default function LugarDetalleScreen() {
               <Text style={themedStyles.infoIcon}>📍</Text>
 
               <View style={themedStyles.infoContent}>
-                <Text style={themedStyles.infoLabel}>
-                  Dirección
-                </Text>
+                <Text style={themedStyles.infoLabel}>Dirección</Text>
 
-                <Text style={themedStyles.infoValue}>
-                  {lugar.direccion}
-                </Text>
+                <Text style={themedStyles.infoValue}>{lugar.direccion}</Text>
               </View>
             </View>
 
@@ -958,13 +931,9 @@ export default function LugarDetalleScreen() {
               <Text style={themedStyles.infoIcon}>🕐</Text>
 
               <View style={themedStyles.infoContent}>
-                <Text style={themedStyles.infoLabel}>
-                  Horarios
-                </Text>
+                <Text style={themedStyles.infoLabel}>Horarios</Text>
 
-                <Text style={themedStyles.infoValue}>
-                  {lugar.horario}
-                </Text>
+                <Text style={themedStyles.infoValue}>{lugar.horario}</Text>
               </View>
             </View>
 
@@ -974,13 +943,9 @@ export default function LugarDetalleScreen() {
               <Text style={themedStyles.infoIcon}>💰</Text>
 
               <View style={themedStyles.infoContent}>
-                <Text style={themedStyles.infoLabel}>
-                  Entrada
-                </Text>
+                <Text style={themedStyles.infoLabel}>Entrada</Text>
 
-                <Text style={themedStyles.infoValue}>
-                  {lugar.precio}
-                </Text>
+                <Text style={themedStyles.infoValue}>{lugar.precio}</Text>
               </View>
             </View>
           </View>
@@ -988,17 +953,10 @@ export default function LugarDetalleScreen() {
           {/* Acciones */}
 
           <View style={themedStyles.actions}>
-            <Pressable
-              style={themedStyles.primaryButton}
-              onPress={abrirRuta}
-            >
-              <Text style={themedStyles.primaryButtonIcon}>
-                🧭
-              </Text>
+            <Pressable style={themedStyles.primaryButton} onPress={abrirRuta}>
+              <Text style={themedStyles.primaryButtonIcon}>🧭</Text>
 
-              <Text style={themedStyles.primaryButtonText}>
-                Cómo llegar
-              </Text>
+              <Text style={themedStyles.primaryButtonText}>Cómo llegar</Text>
             </Pressable>
 
             <Pressable
@@ -1006,11 +964,11 @@ export default function LugarDetalleScreen() {
               onPress={alternarAudio}
             >
               <Text style={themedStyles.secondaryButtonIcon}>
-                {audioStatus.playing ? '⏸️' : '🎧'}
+                {audioStatus.playing ? "⏸️" : "🎧"}
               </Text>
 
               <Text style={themedStyles.secondaryButtonText}>
-                {audioStatus.playing ? 'Pausar' : 'Audioguía'}
+                {audioStatus.playing ? "Pausar" : "Audioguía"}
               </Text>
             </Pressable>
           </View>
@@ -1021,18 +979,14 @@ export default function LugarDetalleScreen() {
             <>
               <Pressable
                 style={themedStyles.transcriptionButton}
-                onPress={() =>
-                  setMostrarTranscripcion(!mostrarTranscripcion)
-                }
+                onPress={() => setMostrarTranscripcion(!mostrarTranscripcion)}
               >
-                <Text style={themedStyles.transcriptionButtonIcon}>
-                  📄
-                </Text>
+                <Text style={themedStyles.transcriptionButtonIcon}>📄</Text>
 
                 <Text style={themedStyles.transcriptionButtonText}>
                   {mostrarTranscripcion
-                    ? 'Ocultar transcripción'
-                    : 'Ver transcripción'}
+                    ? "Ocultar transcripción"
+                    : "Ver transcripción"}
                 </Text>
               </Pressable>
 
@@ -1057,13 +1011,11 @@ export default function LugarDetalleScreen() {
             onPress={abrirRegistroDeVisita}
           >
             <Text style={themedStyles.visitButtonIcon}>
-              {visitaRegistrada ? '✓' : '📍'}
+              {visitaRegistrada ? "✓" : "📍"}
             </Text>
 
             <Text style={themedStyles.visitButtonText}>
-              {visitaRegistrada
-                ? 'Visita registrada'
-                : 'Registrar visita'}
+              {visitaRegistrada ? "Visita registrada" : "Registrar visita"}
             </Text>
           </Pressable>
 
@@ -1077,9 +1029,7 @@ export default function LugarDetalleScreen() {
           >
             <View style={themedStyles.modalOverlay}>
               <View style={themedStyles.modalCard}>
-                <Text style={themedStyles.modalTitle}>
-                  Registrar visita
-                </Text>
+                <Text style={themedStyles.modalTitle}>Registrar visita</Text>
 
                 <Text style={themedStyles.modalSubtitle}>
                   ¿Cómo querés registrar tu visita?
@@ -1093,16 +1043,14 @@ export default function LugarDetalleScreen() {
                     setMostrarOpcionesVisita(false);
 
                     router.push({
-                      pathname: '/escanear-qr',
+                      pathname: "/escanear-qr",
                       params: {
                         lugarId: lugar.id,
                       },
                     });
                   }}
                 >
-                  <Text style={themedStyles.visitOptionIcon}>
-                    📷
-                  </Text>
+                  <Text style={themedStyles.visitOptionIcon}>📷</Text>
 
                   <View style={themedStyles.visitOptionContent}>
                     <Text style={themedStyles.visitOptionTitle}>
@@ -1124,9 +1072,7 @@ export default function LugarDetalleScreen() {
                     registrarVisita();
                   }}
                 >
-                  <Text style={themedStyles.visitOptionIcon}>
-                    📍
-                  </Text>
+                  <Text style={themedStyles.visitOptionIcon}>📍</Text>
 
                   <View style={themedStyles.visitOptionContent}>
                     <Text style={themedStyles.visitOptionTitle}>
@@ -1145,14 +1091,12 @@ export default function LugarDetalleScreen() {
                   style={themedStyles.visitOption}
                   onPress={() => {
                     setMostrarOpcionesVisita(false);
-                    setNotaVisita('');
+                    setNotaVisita("");
                     setFotoVisita(null);
                     setMostrarFormularioVisita(true);
                   }}
                 >
-                  <Text style={themedStyles.visitOptionIcon}>
-                    ✏️
-                  </Text>
+                  <Text style={themedStyles.visitOptionIcon}>✏️</Text>
 
                   <View style={themedStyles.visitOptionContent}>
                     <Text style={themedStyles.visitOptionTitle}>
@@ -1171,9 +1115,7 @@ export default function LugarDetalleScreen() {
                   style={themedStyles.modalCancelButton}
                   onPress={() => setMostrarOpcionesVisita(false)}
                 >
-                  <Text style={themedStyles.modalCancelText}>
-                    Cancelar
-                  </Text>
+                  <Text style={themedStyles.modalCancelText}>Cancelar</Text>
                 </Pressable>
               </View>
             </View>
@@ -1186,10 +1128,12 @@ export default function LugarDetalleScreen() {
             onRequestClose={() => setMostrarFormularioVisita(false)}
           >
             <View style={themedStyles.modalOverlay}>
-              <View style={themedStyles.modalCard}>
-                <Text style={themedStyles.modalTitle}>
-                  Registrar visita
-                </Text>
+              <ScrollView
+                style={themedStyles.modalCardScrollable}
+                contentContainerStyle={themedStyles.modalCardContent}
+                keyboardShouldPersistTaps="handled"
+              >
+                <Text style={themedStyles.modalTitle}>Registrar visita</Text>
 
                 <Text style={themedStyles.modalSubtitle}>
                   {lugar.nombre}. La nota y la foto son opcionales.
@@ -1215,7 +1159,7 @@ export default function LugarDetalleScreen() {
                   <Text style={themedStyles.visitOptionIcon}>📷</Text>
                   <View style={themedStyles.visitOptionContent}>
                     <Text style={themedStyles.visitOptionTitle}>
-                      {fotoVisita ? 'Volver a sacar la foto' : 'Sacar una foto'}
+                      {fotoVisita ? "Volver a sacar la foto" : "Sacar una foto"}
                     </Text>
                     <Text style={themedStyles.visitOptionText}>
                       La foto se guarda en este teléfono.
@@ -1256,25 +1200,18 @@ export default function LugarDetalleScreen() {
                 >
                   <Text style={themedStyles.modalCancelText}>Cancelar</Text>
                 </Pressable>
-              </View>
+              </ScrollView>
             </View>
           </Modal>
 
           {/* Teléfono */}
 
           {lugar.telefono && (
-            <Pressable
-              style={themedStyles.contactButton}
-              onPress={llamar}
-            >
-              <Text style={themedStyles.contactButtonIcon}>
-                📞
-              </Text>
+            <Pressable style={themedStyles.contactButton} onPress={llamar}>
+              <Text style={themedStyles.contactButtonIcon}>📞</Text>
 
               <View style={themedStyles.contactButtonContent}>
-                <Text style={themedStyles.contactButtonLabel}>
-                  Teléfono
-                </Text>
+                <Text style={themedStyles.contactButtonLabel}>Teléfono</Text>
 
                 <Text style={themedStyles.contactButtonText}>
                   {lugar.telefono}
@@ -1286,18 +1223,11 @@ export default function LugarDetalleScreen() {
           {/* Sitio web */}
 
           {lugar.web && (
-            <Pressable
-              style={themedStyles.contactButton}
-              onPress={abrirWeb}
-            >
-              <Text style={themedStyles.contactButtonIcon}>
-                🌐
-              </Text>
+            <Pressable style={themedStyles.contactButton} onPress={abrirWeb}>
+              <Text style={themedStyles.contactButtonIcon}>🌐</Text>
 
               <View style={themedStyles.contactButtonContent}>
-                <Text style={themedStyles.contactButtonLabel}>
-                  Sitio web
-                </Text>
+                <Text style={themedStyles.contactButtonLabel}>Sitio web</Text>
 
                 <Text style={themedStyles.contactButtonText}>
                   Visitar sitio oficial
@@ -1314,12 +1244,12 @@ export default function LugarDetalleScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#F7F3E8',
+    backgroundColor: "#F7F3E8",
   },
 
   container: {
     flex: 1,
-    backgroundColor: '#F7F3E8',
+    backgroundColor: "#F7F3E8",
     paddingHorizontal: 20,
   },
 
@@ -1333,30 +1263,30 @@ const styles = StyleSheet.create({
 
   header: {
     height: 58,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
 
   backButton: {
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: '#DCE9E8',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#DCE9E8",
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   backIcon: {
     fontSize: 32,
-    color: '#253A32',
+    color: "#253A32",
     lineHeight: 36,
   },
 
   headerTitle: {
     fontSize: 18,
-    fontWeight: '800',
-    color: '#253A32',
+    fontWeight: "800",
+    color: "#253A32",
   },
 
   // ------------------------------------------
@@ -1367,25 +1297,25 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: '#E3E1D8',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderColor: "#E3E1D8",
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   favoriteButtonActive: {
-    backgroundColor: '#E5EFE4',
-    borderColor: '#D5E2D3',
+    backgroundColor: "#E5EFE4",
+    borderColor: "#D5E2D3",
   },
 
   favoriteIcon: {
     fontSize: 27,
-    color: '#2F7F8F',
+    color: "#2F7F8F",
   },
 
   favoriteIconActive: {
-    color: '#6B8E5A',
+    color: "#6B8E5A",
   },
 
   // ------------------------------------------
@@ -1395,15 +1325,15 @@ const styles = StyleSheet.create({
   hero: {
     height: 190,
     borderRadius: 24,
-    backgroundColor: '#DCE9E8',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#DCE9E8",
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: 8,
   },
 
   heroImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
     borderRadius: 24,
   },
 
@@ -1416,8 +1346,8 @@ const styles = StyleSheet.create({
   // ------------------------------------------
 
   categoryBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#E5EFE4',
+    alignSelf: "flex-start",
+    backgroundColor: "#E5EFE4",
     borderRadius: 20,
     paddingHorizontal: 13,
     paddingVertical: 7,
@@ -1426,8 +1356,8 @@ const styles = StyleSheet.create({
 
   categoryText: {
     fontSize: 12,
-    fontWeight: '800',
-    color: '#6B8E5A',
+    fontWeight: "800",
+    color: "#6B8E5A",
   },
 
   // ------------------------------------------
@@ -1436,15 +1366,15 @@ const styles = StyleSheet.create({
 
   title: {
     fontSize: 30,
-    fontWeight: '800',
-    color: '#253A32',
+    fontWeight: "800",
+    color: "#253A32",
     marginTop: 10,
   },
 
   description: {
     fontSize: 15,
     lineHeight: 23,
-    color: '#5F5C55',
+    color: "#5F5C55",
     marginTop: 10,
   },
 
@@ -1453,17 +1383,17 @@ const styles = StyleSheet.create({
   // ------------------------------------------
 
   infoCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 18,
     padding: 16,
     marginTop: 20,
     borderWidth: 1,
-    borderColor: '#E3E1D8',
+    borderColor: "#E3E1D8",
   },
 
   infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
 
   infoIcon: {
@@ -1477,21 +1407,21 @@ const styles = StyleSheet.create({
 
   infoLabel: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#77736B',
-    textTransform: 'uppercase',
+    fontWeight: "700",
+    color: "#77736B",
+    textTransform: "uppercase",
   },
 
   infoValue: {
     fontSize: 14,
-    color: '#30352F',
-    fontWeight: '600',
+    color: "#30352F",
+    fontWeight: "600",
     marginTop: 2,
   },
 
   separator: {
     height: 1,
-    backgroundColor: '#EAE7DE',
+    backgroundColor: "#EAE7DE",
     marginVertical: 13,
   },
 
@@ -1500,7 +1430,7 @@ const styles = StyleSheet.create({
   // ------------------------------------------
 
   actions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 10,
     marginTop: 18,
   },
@@ -1509,10 +1439,10 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 52,
     borderRadius: 16,
-    backgroundColor: '#2F7F8F',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#2F7F8F",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 7,
   },
 
@@ -1521,19 +1451,19 @@ const styles = StyleSheet.create({
   },
 
   primaryButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: "800",
   },
 
   secondaryButton: {
     flex: 1,
     height: 52,
     borderRadius: 16,
-    backgroundColor: '#E5EFE4',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#E5EFE4",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 7,
   },
 
@@ -1542,9 +1472,9 @@ const styles = StyleSheet.create({
   },
 
   secondaryButtonText: {
-    color: '#253A32',
+    color: "#253A32",
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: "800",
   },
 
   // ------------------------------------------
@@ -1554,13 +1484,13 @@ const styles = StyleSheet.create({
   transcriptionButton: {
     minHeight: 52,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: '#E3E1D8',
+    borderColor: "#E3E1D8",
     marginTop: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 8,
   },
 
@@ -1569,31 +1499,31 @@ const styles = StyleSheet.create({
   },
 
   transcriptionButtonText: {
-    color: '#253A32',
+    color: "#253A32",
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: "800",
   },
 
   transcriptionCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 18,
     padding: 18,
     marginTop: 12,
     borderWidth: 1,
-    borderColor: '#E3E1D8',
+    borderColor: "#E3E1D8",
   },
 
   transcriptionTitle: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#253A32',
+    fontWeight: "800",
+    color: "#253A32",
     marginBottom: 10,
   },
 
   transcriptionText: {
     fontSize: 14,
     lineHeight: 22,
-    color: '#5F5C55',
+    color: "#5F5C55",
   },
 
   // ------------------------------------------
@@ -1603,24 +1533,24 @@ const styles = StyleSheet.create({
   visitButton: {
     height: 54,
     borderRadius: 16,
-    backgroundColor: '#253A32',
+    backgroundColor: "#253A32",
     marginTop: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 8,
   },
 
   visitButtonIcon: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 20,
-    fontWeight: '800',
+    fontWeight: "800",
   },
 
   visitButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: "800",
   },
 
   // ------------------------------------------
@@ -1629,12 +1559,12 @@ const styles = StyleSheet.create({
 
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+    justifyContent: "flex-end",
   },
 
   modalCard: {
-    backgroundColor: '#F7F3E8',
+    backgroundColor: "#F7F3E8",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     padding: 22,
@@ -1643,32 +1573,32 @@ const styles = StyleSheet.create({
 
   modalTitle: {
     fontSize: 24,
-    fontWeight: '800',
-    color: '#253A32',
+    fontWeight: "800",
+    color: "#253A32",
   },
 
   modalSubtitle: {
     fontSize: 14,
-    color: '#77736B',
+    color: "#77736B",
     marginTop: 5,
     marginBottom: 18,
   },
 
   visitOption: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#E3E1D8',
+    borderColor: "#E3E1D8",
     padding: 15,
     marginBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
 
   visitOptionIcon: {
     fontSize: 28,
     width: 48,
-    textAlign: 'center',
+    textAlign: "center",
   },
 
   visitOptionContent: {
@@ -1678,31 +1608,31 @@ const styles = StyleSheet.create({
 
   visitOptionTitle: {
     fontSize: 15,
-    fontWeight: '800',
-    color: '#253A32',
+    fontWeight: "800",
+    color: "#253A32",
   },
 
   visitOptionText: {
     fontSize: 12,
     lineHeight: 17,
-    color: '#77736B',
+    color: "#77736B",
     marginTop: 3,
   },
 
   visitNoteInput: {
     minHeight: 96,
     borderWidth: 1,
-    borderColor: '#D8E4E2',
+    borderColor: "#D8E4E2",
     borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-    color: '#253A32',
+    backgroundColor: "#FFFFFF",
+    color: "#253A32",
     fontSize: 15,
     padding: 12,
     marginBottom: 12,
   },
 
   visitPhotoPreview: {
-    width: '100%',
+    width: "100%",
     height: 180,
     borderRadius: 14,
     marginBottom: 12,
@@ -1715,16 +1645,16 @@ const styles = StyleSheet.create({
   modalCancelButton: {
     height: 50,
     borderRadius: 15,
-    backgroundColor: '#DCE9E8',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#DCE9E8",
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: 4,
   },
 
   modalCancelText: {
     fontSize: 14,
-    fontWeight: '800',
-    color: '#253A32',
+    fontWeight: "800",
+    color: "#253A32",
   },
 
   // ------------------------------------------
@@ -1734,14 +1664,14 @@ const styles = StyleSheet.create({
   contactButton: {
     minHeight: 62,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: '#E3E1D8',
+    borderColor: "#E3E1D8",
     marginTop: 12,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
 
   contactButtonIcon: {
@@ -1755,15 +1685,15 @@ const styles = StyleSheet.create({
 
   contactButtonLabel: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#77736B',
-    textTransform: 'uppercase',
+    fontWeight: "700",
+    color: "#77736B",
+    textTransform: "uppercase",
   },
 
   contactButtonText: {
     fontSize: 14,
-    color: '#30352F',
-    fontWeight: '700',
+    color: "#30352F",
+    fontWeight: "700",
     marginTop: 2,
   },
 
@@ -1773,9 +1703,9 @@ const styles = StyleSheet.create({
 
   loadingText: {
     fontSize: 15,
-    color: '#5F5C55',
+    color: "#5F5C55",
     marginTop: 14,
-    textAlign: 'center',
+    textAlign: "center",
   },
 
   // ------------------------------------------
@@ -1784,8 +1714,8 @@ const styles = StyleSheet.create({
 
   errorContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   errorIcon: {
@@ -1794,20 +1724,20 @@ const styles = StyleSheet.create({
 
   errorTitle: {
     fontSize: 24,
-    fontWeight: '800',
-    color: '#253A32',
+    fontWeight: "800",
+    color: "#253A32",
     marginTop: 15,
   },
 
   errorText: {
     fontSize: 14,
-    color: '#77736B',
-    textAlign: 'center',
+    color: "#77736B",
+    textAlign: "center",
     marginTop: 8,
   },
 
   backButtonLarge: {
-    backgroundColor: '#2F7F8F',
+    backgroundColor: "#2F7F8F",
     paddingHorizontal: 25,
     paddingVertical: 13,
     borderRadius: 14,
@@ -1815,8 +1745,19 @@ const styles = StyleSheet.create({
   },
 
   backButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
+    color: "#FFFFFF",
+    fontWeight: "800",
     fontSize: 14,
+  },
+  modalCardScrollable: {
+    backgroundColor: "#F7F3E8",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    maxHeight: "90%",
+  },
+
+  modalCardContent: {
+    padding: 22,
+    paddingBottom: 30,
   },
 });

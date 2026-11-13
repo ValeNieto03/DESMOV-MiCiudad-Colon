@@ -2,6 +2,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { consultarAPI } from '@/servicios/api';
+import { obtenerIdAPIdeLugar } from '@/servicios/lugares-integrados';
 
 const FAVORITOS_KEY = 'mi-ciudad-favoritos';
 const OPERACIONES_PENDIENTES_KEY = 'mi-ciudad-favoritos-pendientes';
@@ -85,8 +86,10 @@ async function enviarOperacion(
     lugarId: string,
     guardar: boolean,
 ): Promise<void> {
+    const lugarIdAPI = await obtenerIdAPIdeLugar(lugarId);
+
     await consultarAPI(
-        `/yo/favoritos/${encodeURIComponent(lugarId)}`,
+        `/yo/favoritos/${encodeURIComponent(lugarIdAPI)}`,
         { method: guardar ? 'PUT' : 'DELETE' },
         true,
     );

@@ -1,22 +1,21 @@
-import {
-  consultarAPI,
-  subirImagenAPI,
-} from '@/servicios/api';
+import { consultarAPI, subirImagenAPI } from "@/servicios/api";
+import { obtenerIdAPIdeLugar } from "@/servicios/lugares-integrados";
 import {
   actualizarFotoVisita,
   marcarVisitaSincronizada,
   type Visita,
-} from '@/servicios/visitas';
+} from "@/servicios/visitas";
 
 type VisitaParaEnviar = Pick<
   Visita,
-  'id' | 'lugarId' | 'fechaHora' | 'origen' | 'nota' | 'fotoUri'
+  "id" | "lugarId" | "fechaHora" | "origen" | "nota" | "fotoUri"
 >;
 
 /** Envía una visita local a la API y guarda su resultado en el teléfono. */
 export async function sincronizarVisita(visita: Visita): Promise<void> {
   // Las visitas de demostración no representan una ubicación verificada.
-  if (visita.origen === 'demo') return;
+  if (visita.origen === "demo") return;
+  const lugarIdAPI = await obtenerIdAPIdeLugar(visita.lugarId);
 
   const visitaParaEnviar: VisitaParaEnviar = {
     id: visita.id,
@@ -27,17 +26,18 @@ export async function sincronizarVisita(visita: Visita): Promise<void> {
     fotoUri: visita.fotoUri,
   };
 
-  const fotoYaSubida = visita.fotoUri && /^https?:\/\//i.test(visita.fotoUri)
-    ? visita.fotoUri
-    : undefined;
+  const fotoYaSubida =
+    visita.fotoUri && /^https?:\/\//i.test(visita.fotoUri)
+      ? visita.fotoUri
+      : undefined;
 
   await consultarAPI<VisitaParaEnviar>(
-    '/yo/visitas',
+    "/yo/visitas",
     {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify({
         id: visitaParaEnviar.id,
-        lugarId: visitaParaEnviar.lugarId,
+        lugarId: lugarIdAPI,
         fechaHora: visitaParaEnviar.fechaHora,
         origen: visitaParaEnviar.origen,
         nota: visitaParaEnviar.nota,
@@ -53,7 +53,7 @@ export async function sincronizarVisita(visita: Visita): Promise<void> {
     fotoUriRemota = await subirImagenAPI(
       fotoUriRemota,
       `${visita.id}.jpg`,
-      'image/jpeg',
+      "image/jpeg",
     );
 
     // Si falla el PATCH, el próximo intento reutiliza el archivo ya subido.
@@ -63,7 +63,7 @@ export async function sincronizarVisita(visita: Visita): Promise<void> {
   await consultarAPI<VisitaParaEnviar>(
     `/yo/visitas/${encodeURIComponent(visita.id)}`,
     {
-      method: 'PATCH',
+      method: "PATCH",
       body: JSON.stringify({
         nota: visita.nota,
         fotoUri: fotoUriRemota,

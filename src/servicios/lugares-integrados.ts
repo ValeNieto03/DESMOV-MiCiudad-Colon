@@ -2,6 +2,7 @@ import { lugares } from '@/data/lugares';
 import type { Place } from '@/data/lugares';
 
 import {
+  comprobarConexionAPI,
   obtenerLugaresAPI,
   obtenerCategoriasAPI,
   prepararUrlImagen,
@@ -726,6 +727,43 @@ export async function obtenerLugaresIntegrados(): Promise<Place[]> {
       categoria: normalizarCategoria(lugar.categoria),
     }));
   }
+}
+
+/** Resuelve el identificador local a la clave que reconoce la API. */
+export async function obtenerIdAPIdeLugar(lugarId: string): Promise<string> {
+  if (lugarId.startsWith('lug-')) {
+    return lugarId;
+  }
+
+  const lugarGuardado = obtenerLugaresLocales().find(
+    (lugar) => lugar.id === lugarId || lugar.apiId === lugarId,
+  );
+
+  const idGuardado =
+    lugarGuardado?.apiId ??
+    (lugarGuardado?.id.startsWith('lug-') ? lugarGuardado.id : null);
+
+  if (idGuardado) {
+    return idGuardado;
+  }
+
+  // Si no hay una equivalencia guardada, primero confirmamos que la API responda.
+  await comprobarConexionAPI();
+
+  const lugaresActualizados = await obtenerLugaresIntegrados();
+  const lugarActualizado = lugaresActualizados.find(
+    (lugar) => lugar.id === lugarId || lugar.apiId === lugarId,
+  );
+
+  const idActualizado =
+    lugarActualizado?.apiId ??
+    (lugarActualizado?.id.startsWith('lug-') ? lugarActualizado.id : null);
+
+  if (!idActualizado) {
+    throw new Error('LUGAR_SIN_ID_API');
+  }
+
+  return idActualizado;
 }
 
 
