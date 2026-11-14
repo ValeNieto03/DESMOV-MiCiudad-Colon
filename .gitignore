@@ -44,3 +44,26 @@ example
 
 # Copias de seguridad locales
 /package-lock.sdk57-backup.json
+
+# Archivos generados localmente: APK y respaldos
+/*.apk
+/*.tar
+/respaldo-*/
+/*.backup
+/*.bak
+/*.respaldo-*
+/app.json.backup*
+/app.json.respaldo*
+
+# Archivos de trabajo del backend (no son código fuente)
+/api-mi-ciudad/archivos/
+/api-mi-ciudad/resultado-verificacion.txt
+
+# Copias de seguridad dentro de la app
+**/*.backup
+**/*.bak
+**/*.respaldo-*
+
+# Datos y archivos locales del backend
+/api-mi-ciudad/archivos/
+/api-mi-ciudad/resultado-verificacion.txt

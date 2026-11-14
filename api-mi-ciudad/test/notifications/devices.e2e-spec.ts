@@ -33,6 +33,77 @@ describe('Guardar los tokens: /dispositivos', () => {
     return res;
   };
 
+  describe('GET /dispositivos: consultar mis dispositivos registrados', () => {
+    it('devuelve los dispositivos de mi cuenta sin exponer los tokens Expo', async () => {
+      await registrar(lucia, TOKEN_A, 'android').expect(201);
+      await registrar(lucia, TOKEN_B, 'ios').expect(201);
+      await registrar(pedro, 'ExponentPushToken[pppppppppppppppppppppp]', 'android').expect(201);
+
+      const res = await ctx
+        .http()
+        .get('/dispositivos')
+        .set(conSesion(lucia))
+        .expect(200);
+
+      expect(res.body.datos).toHaveLength(2);
+      expect(res.body.meta.total).toBe(2);
+
+      expect(res.body.datos).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ plataforma: 'android' }),
+          expect.objectContaining({ plataforma: 'ios' }),
+        ]),
+      );
+
+      for (const dispositivo of res.body.datos) {
+        expect(dispositivo).toHaveProperty('creadoEn');
+        expect(Number.isNaN(Date.parse(dispositivo.creadoEn))).toBe(false);
+        expect(dispositivo).not.toHaveProperty('tokenExpo');
+      }
+
+      expect(JSON.stringify(res.body)).not.toContain(TOKEN_A);
+      expect(JSON.stringify(res.body)).not.toContain(TOKEN_B);
+    });
+
+    it('no muestra los dispositivos registrados por otros usuarios', async () => {
+      await registrar(lucia, TOKEN_A, 'android').expect(201);
+      await registrar(pedro, 'ExponentPushToken[pppppppppppppppppppppp]', 'ios').expect(201);
+
+      const resLucia = await ctx
+        .http()
+        .get('/dispositivos')
+        .set(conSesion(lucia))
+        .expect(200);
+
+      const resPedro = await ctx
+        .http()
+        .get('/dispositivos')
+        .set(conSesion(pedro))
+        .expect(200);
+
+      expect(resLucia.body.datos).toHaveLength(1);
+      expect(resLucia.body.datos[0].plataforma).toBe('android');
+      expect(resLucia.body.meta.total).toBe(1);
+
+      expect(resPedro.body.datos).toHaveLength(1);
+      expect(resPedro.body.datos[0].plataforma).toBe('ios');
+      expect(resPedro.body.meta.total).toBe(1);
+
+      expect(JSON.stringify(resLucia.body)).not.toContain('ExponentPushToken[pppppppppppppppppppppp]');
+    });
+
+    it('si no tengo dispositivos, devuelve una lista vacía', async () => {
+      const res = await ctx
+        .http()
+        .get('/dispositivos')
+        .set(conSesion(lucia))
+        .expect(200);
+
+      expect(res.body.datos).toEqual([]);
+      expect(res.body.meta.total).toBe(0);
+    });
+  });
+
   describe('POST /dispositivos: registrar el teléfono (tiene que devolver 201 la primera vez)', () => {
     it('registra el teléfono: 201 con { tokenExpo, plataforma }', async () => {
       const res = await registrar(lucia).expect(201);
@@ -160,12 +231,13 @@ describe('Guardar los tokens: /dispositivos', () => {
     });
   });
 
-  it('NO_AUTENTICADO sin token (los tres endpoints)', async () => {
+  it('NO_AUTENTICADO sin token (los cuatro endpoints)', async () => {
     esperarError(
       await ctx.http().post('/dispositivos').send({ tokenExpo: TOKEN_A, plataforma: 'ios' }),
       401,
       'NO_AUTENTICADO',
     );
+    esperarError(await ctx.http().get('/dispositivos'), 401, 'NO_AUTENTICADO');
     esperarError(await ctx.http().post('/dispositivos/prueba'), 401, 'NO_AUTENTICADO');
     esperarError(
       await ctx.http().delete(`/dispositivos/${encodeURIComponent(TOKEN_A)}`),

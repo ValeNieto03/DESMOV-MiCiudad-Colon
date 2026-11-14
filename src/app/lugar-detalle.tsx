@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,31 +16,26 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   useLocalSearchParams,
   useRouter,
-  useFocusEffect,
 } from 'expo-router';
-import { lugares } from '@/data/lugares';
-import type { Place } from '@/data/lugares';
-import { obtenerLugaresIntegrados } from '@/servicios/lugares-integrados';
+import * as Location from 'expo-location';
+
+import { useCatalogo } from '@/servicios/CatalogoProvider';
+import { useThemeContext } from '@/contexts/ThemeContext';
+
+import ReproductorAudioguia from '@/components/ReproductorAudioguia';
+
 import {
   obtenerAudioguiaActivaAPI,
   type AudioguiaActivaAPI,
 } from '@/servicios/api';
-import * as Location from 'expo-location';
-import {
-  useAudioPlayer,
-  useAudioPlayerStatus,
-
-} from 'expo-audio';
 
 import {
   obtenerSesion,
   obtenerUsuarioActual,
 } from '@/servicios/autenticacion';
 
-import {
-  guardarVisita,
-  Visita,
-} from '@/servicios/visitas';
+import type { Visita } from '@/servicios/visitas';
+import { confirmarRegistroVisita } from '@/servicios/registro-visitas';
 
 import {
   esFavorito,
@@ -56,10 +52,12 @@ import {
 // Para la versión final debe quedar en false.
 //
 
-const MODO_PRUEBA_GPS = true;
+const MODO_PRUEBA_GPS = false;
 
 export default function LugarDetalleScreen() {
   const router = useRouter();
+
+  const { colors } = useThemeContext();
 
   const { id } = useLocalSearchParams<{
     id?: string | string[];
@@ -71,45 +69,23 @@ export default function LugarDetalleScreen() {
   // LUGARES LOCALES Y LUGARES DE LA API
   // --------------------------------------------------
 
-  const [lugaresDisponibles, setLugaresDisponibles] =
-    useState<Place[]>(lugares);
-
-  const [cargandoLugar, setCargandoLugar] =
-    useState(true);
-
-  useEffect(() => {
-    let componenteActivo = true;
-
-    async function cargarLugares() {
-      try {
-        const lugaresIntegrados =
-          await obtenerLugaresIntegrados();
-
-        if (componenteActivo) {
-          setLugaresDisponibles(lugaresIntegrados);
-        }
-      } catch (error) {
-        console.warn(
-          'No se pudieron cargar los lugares integrados:',
-          error
-        );
-      } finally {
-        if (componenteActivo) {
-          setCargandoLugar(false);
-        }
-      }
-    }
-
-    cargarLugares();
-
-    return () => {
-      componenteActivo = false;
-    };
-  }, []);
+  const {
+    lugaresDisponibles,
+    cargandoCatalogo: cargandoLugar,
+  } = useCatalogo();
 
   const lugar = lugaresDisponibles.find(
     (item) => item.id === idLugar
   );
+
+  console.log('DIAGNÓSTICO IMAGEN DEL DETALLE:', {
+    idBuscado: idLugar,
+    lugarEncontrado: lugar?.nombre,
+    apiId: lugar?.apiId,
+    imagen: lugar?.imagen,
+    tipoImagen: typeof lugar?.imagen,
+    tieneImagen: Boolean(lugar?.imagen),
+  });
 
   const [audioguiaActiva, setAudioguiaActiva] =
     useState<AudioguiaActivaAPI | null>(null);
@@ -147,18 +123,14 @@ export default function LugarDetalleScreen() {
     };
   }, [lugar?.id]);
 
-  const audioParaReproducir = audioguiaActiva?.url
-    ? { uri: audioguiaActiva.url }
-    : lugar?.audio;
+  const fuenteAudioguia =
+    audioguiaActiva?.url || lugar?.audio || null;
 
   const transcripcionParaMostrar =
     audioguiaActiva?.transcripcion ||
     lugar?.transcripcion;
 
   const [mostrarTranscripcion, setMostrarTranscripcion] =
-    useState(false);
-
-  const [visitaRegistrada, setVisitaRegistrada] =
     useState(false);
 
   const [mostrarOpcionesVisita, setMostrarOpcionesVisita] =
@@ -172,27 +144,6 @@ export default function LugarDetalleScreen() {
 
   const [cargandoFavorito, setCargandoFavorito] =
     useState(false);
-
-  const player = useAudioPlayer(lugar?.audio);
-
-  const audioStatus = useAudioPlayerStatus(player);
-
-  // --------------------------------------------------
-  // DETENER AUDIO AL SALIR DE LA PANTALLA
-  // --------------------------------------------------
-
-  useFocusEffect(
-    useCallback(() => {
-      return () => {
-        player.pause();
-
-        console.log(
-          'Audioguía pausada al salir del detalle:',
-          lugar?.id
-        );
-      };
-    }, [player, lugar?.id])
-  );
 
   // --------------------------------------------------
   // COMPROBAR SI EL LUGAR ES FAVORITO
@@ -226,7 +177,9 @@ export default function LugarDetalleScreen() {
         setFavorito(resultado);
 
         console.log('❤️ Estado favorito:', {
-          lugarId: lugar.id,
+          lugarIdLocal: lugar.id,
+          apiId: lugar.apiId,
+          idEnviadoAPI: lugar.apiId ?? lugar.id,
           favorito: resultado,
         });
       } catch (error) {
@@ -281,6 +234,12 @@ export default function LugarDetalleScreen() {
 
       setCargandoFavorito(true);
 
+      console.log('❤️ ENVIANDO FAVORITO:', {
+        idLocal: lugar.id,
+        apiId: lugar.apiId,
+        idEnviadoAPI: lugar.apiId ?? lugar.id,
+      });
+
       const nuevoEstado = await alternarFavorito(
         sesion.usuario.id,
         lugar.apiId ?? lugar.id
@@ -315,51 +274,6 @@ export default function LugarDetalleScreen() {
   };
 
   // --------------------------------------------------
-  // AUDIO
-  // --------------------------------------------------
-
-
-
-
-  const alternarAudio = async () => {
-    if (!audioParaReproducir) {
-      Alert.alert(
-        'Audioguía no disponible',
-        'La audioguía de este lugar todavía no está disponible.'
-      );
-      return;
-    }
-
-    try {
-      if (audioStatus.playing) {
-        player.pause();
-        return;
-      }
-
-      await player.replace(audioParaReproducir);
-      player.play();
-
-      console.log('ID DEL LUGAR:', lugar?.id);
-      console.log(
-        'AUDIO REPRODUCIDO:',
-        JSON.stringify(audioParaReproducir)
-      );
-    } catch (error) {
-      console.error(
-        'Error al reproducir la audioguía:',
-        error
-      );
-
-      Alert.alert(
-        'Error de reproducción',
-        'No se pudo cargar la audioguía. Intentá nuevamente.'
-      );
-    }
-  };
-
-
-
-  // --------------------------------------------------
   // COMPROBAR SESIÓN ANTES DE REGISTRAR UNA VISITA
   // --------------------------------------------------
 
@@ -386,15 +300,6 @@ export default function LugarDetalleScreen() {
         return;
       }
 
-      if (visitaRegistrada) {
-        Alert.alert(
-          'Visita ya registrada',
-          'Ya registraste tu visita a este lugar.'
-        );
-
-        return;
-      }
-
       setMostrarOpcionesVisita(true);
     } catch (error) {
       console.error(
@@ -416,19 +321,8 @@ export default function LugarDetalleScreen() {
   const registrarVisita = async () => {
     if (!lugar) return;
 
-    if (visitaRegistrada) {
-      Alert.alert(
-        'Visita ya registrada',
-        'Ya registraste tu visita a este lugar.'
-      );
-
-      return;
-    }
-
     try {
-      // ----------------------------------------------
       // OBTENER USUARIO ACTUAL
-      // ----------------------------------------------
 
       const usuario = await obtenerUsuarioActual();
 
@@ -441,9 +335,7 @@ export default function LugarDetalleScreen() {
         return;
       }
 
-      // ----------------------------------------------
       // PEDIR PERMISO DE UBICACIÓN
-      // ----------------------------------------------
 
       const { status } =
         await Location.requestForegroundPermissionsAsync();
@@ -457,17 +349,13 @@ export default function LugarDetalleScreen() {
         return;
       }
 
-      // ----------------------------------------------
       // OBTENER UBICACIÓN
-      // ----------------------------------------------
 
       let latUsuario: number;
       let lonUsuario: number;
 
       if (MODO_PRUEBA_GPS) {
-        // --------------------------------------------
         // MODO DE PRUEBA
-        // --------------------------------------------
 
         latUsuario = lugar.latitud;
         lonUsuario = lugar.longitud;
@@ -479,9 +367,7 @@ export default function LugarDetalleScreen() {
           longitud: lonUsuario,
         });
       } else {
-        // --------------------------------------------
         // GPS REAL
-        // --------------------------------------------
 
         const ubicacion =
           await Location.getCurrentPositionAsync({
@@ -497,9 +383,7 @@ export default function LugarDetalleScreen() {
         });
       }
 
-      // ----------------------------------------------
       // CALCULAR DISTANCIA
-      // ----------------------------------------------
 
       const diferenciaLatitud =
         ((lugar.latitud - latUsuario) * Math.PI) / 180;
@@ -542,9 +426,7 @@ export default function LugarDetalleScreen() {
         'metros'
       );
 
-      // ----------------------------------------------
       // COMPROBAR DISTANCIA
-      // ----------------------------------------------
 
       if (distanciaMetros > 100) {
         Alert.alert(
@@ -555,9 +437,7 @@ export default function LugarDetalleScreen() {
         return;
       }
 
-      // ----------------------------------------------
       // CREAR VISITA
-      // ----------------------------------------------
 
       const nuevaVisita: Visita = {
         id: `vis-${Date.now()}`,
@@ -570,22 +450,21 @@ export default function LugarDetalleScreen() {
         sincronizada: false,
       };
 
-      // ----------------------------------------------
-      // GUARDAR EN SQLITE
-      // ----------------------------------------------
+      // REGISTRAR O ACTUALIZAR VISITA
 
-      await guardarVisita(nuevaVisita);
-
-      console.log(
-        '✅ VISITA GPS GUARDADA:',
-        nuevaVisita
-      );
-
-      setVisitaRegistrada(true);
-
-      Alert.alert(
-        '¡Visita registrada!',
-        `Tu visita a ${lugar.nombre} fue registrada correctamente.`
+      confirmarRegistroVisita(
+        nuevaVisita,
+        lugar.nombre,
+        (resultado) => {
+          Alert.alert(
+            resultado === 'actualizada'
+              ? '¡Visita actualizada!'
+              : '¡Visita registrada!',
+            resultado === 'actualizada'
+              ? `Se actualizó tu visita a ${lugar.nombre}.`
+              : `Tu visita a ${lugar.nombre} fue registrada correctamente.`
+          );
+        }
       );
     } catch (error) {
       console.error(
@@ -599,6 +478,65 @@ export default function LugarDetalleScreen() {
       );
     }
   };
+
+
+  // --------------------------------------------------
+  // REGISTRO MANUAL DE VISITA
+  // --------------------------------------------------
+
+  const registrarVisitaManual = async () => {
+    if (!lugar) return;
+
+    try {
+      const usuario = await obtenerUsuarioActual();
+
+      if (!usuario) {
+        Alert.alert(
+          'Necesitás iniciar sesión',
+          'Para registrar una visita necesitás tener una cuenta.'
+        );
+
+        return;
+      }
+
+      const nuevaVisita: Visita = {
+        id: `vis-${Date.now()}`,
+        usuarioId: usuario.id,
+        lugarId: lugar.id,
+        fechaHora: new Date().toISOString(),
+        origen: 'manual',
+        fotoUri: null,
+        nota: null,
+        sincronizada: false,
+      };
+
+      confirmarRegistroVisita(
+        nuevaVisita,
+        lugar.nombre,
+        (resultado) => {
+          Alert.alert(
+            resultado === 'actualizada'
+              ? '¡Visita actualizada!'
+              : '¡Visita registrada!',
+            resultado === 'actualizada'
+              ? `Se actualizó tu visita a ${lugar.nombre}.`
+              : `Tu visita a ${lugar.nombre} fue registrada correctamente.`
+          );
+        }
+      );
+    } catch (error) {
+      console.error(
+        'Error al registrar visita manualmente:',
+        error
+      );
+
+      Alert.alert(
+        'No se pudo registrar la visita',
+        'Intentá nuevamente en unos segundos.'
+      );
+    }
+  };
+
 
   // --------------------------------------------------
   // CÓMO LLEGAR
@@ -616,6 +554,7 @@ export default function LugarDetalleScreen() {
           'Ubicación necesaria',
           'Necesitamos tu ubicación para calcular la ruta hasta este lugar.'
         );
+
         return;
       }
 
@@ -638,7 +577,6 @@ export default function LugarDetalleScreen() {
         `&travelmode=driving`;
 
       await Linking.openURL(url);
-
     } catch (error) {
       console.error('Error al abrir la ruta:', error);
 
@@ -676,6 +614,471 @@ export default function LugarDetalleScreen() {
   };
 
   // --------------------------------------------------
+  // ESTILOS SEGÚN EL TEMA
+  // --------------------------------------------------
+
+  const styles = StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      paddingHorizontal: 20,
+    },
+
+    scrollContent: {
+      paddingBottom: 30,
+    },
+
+    // Encabezado
+
+    header: {
+      height: 58,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+
+    backButton: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      backgroundColor: colors.backgroundSelected,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+
+    backIcon: {
+      fontSize: 32,
+      color: colors.text,
+      lineHeight: 36,
+    },
+
+    headerTitle: {
+      fontSize: 18,
+      fontWeight: '800',
+      color: colors.text,
+    },
+
+    // Favoritos
+
+    favoriteButton: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      backgroundColor: colors.backgroundElement,
+      borderWidth: 1,
+      borderColor: colors.border,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+
+    favoriteButtonActive: {
+      backgroundColor: colors.successBackground,
+      borderColor: colors.success,
+    },
+
+    favoriteIcon: {
+      fontSize: 27,
+      color: colors.primary,
+    },
+
+    favoriteIconActive: {
+      color: colors.success,
+    },
+
+    // Imagen principal
+
+    hero: {
+      height: 190,
+      borderRadius: 24,
+      backgroundColor: colors.backgroundSelected,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginTop: 8,
+    },
+
+    heroImage: {
+      width: '100%',
+      height: '100%',
+      borderRadius: 24,
+    },
+
+    heroIcon: {
+      fontSize: 70,
+    },
+
+    // Categoría
+
+    categoryBadge: {
+      alignSelf: 'flex-start',
+      backgroundColor: colors.successBackground,
+      borderRadius: 20,
+      paddingHorizontal: 13,
+      paddingVertical: 7,
+      marginTop: 18,
+    },
+
+    categoryText: {
+      fontSize: 12,
+      fontWeight: '800',
+      color: colors.success,
+    },
+
+    // Título y descripción
+
+    title: {
+      fontSize: 30,
+      fontWeight: '800',
+      color: colors.text,
+      marginTop: 10,
+    },
+
+    description: {
+      fontSize: 15,
+      lineHeight: 23,
+      color: colors.textSecondary,
+      marginTop: 10,
+    },
+
+    // Información
+
+    infoCard: {
+      backgroundColor: colors.backgroundElement,
+      borderRadius: 18,
+      padding: 16,
+      marginTop: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+
+    infoRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+
+    infoIcon: {
+      fontSize: 22,
+      width: 36,
+    },
+
+    infoContent: {
+      flex: 1,
+    },
+
+    infoLabel: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+    },
+
+    infoValue: {
+      fontSize: 14,
+      color: colors.text,
+      fontWeight: '600',
+      marginTop: 2,
+    },
+
+    separator: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginVertical: 13,
+    },
+
+    // Acciones
+
+    actions: {
+      flexDirection: 'row',
+      gap: 10,
+      marginTop: 18,
+    },
+
+    primaryButton: {
+      flex: 1,
+      height: 52,
+      borderRadius: 16,
+      backgroundColor: colors.primary,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 7,
+    },
+
+    primaryButtonIcon: {
+      fontSize: 18,
+    },
+
+    primaryButtonText: {
+      color: colors.onPrimary,
+      fontSize: 14,
+      fontWeight: '800',
+    },
+
+    secondaryButton: {
+      flex: 1,
+      height: 52,
+      borderRadius: 16,
+      backgroundColor: colors.successBackground,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 7,
+    },
+
+    secondaryButtonIcon: {
+      fontSize: 18,
+    },
+
+    secondaryButtonText: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '800',
+    },
+
+    // Transcripción
+
+    transcriptionButton: {
+      minHeight: 52,
+      borderRadius: 16,
+      backgroundColor: colors.backgroundElement,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginTop: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+
+    transcriptionButtonIcon: {
+      fontSize: 18,
+    },
+
+    transcriptionButtonText: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '800',
+    },
+
+    transcriptionCard: {
+      backgroundColor: colors.backgroundElement,
+      borderRadius: 18,
+      padding: 18,
+      marginTop: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+
+    transcriptionTitle: {
+      fontSize: 16,
+      fontWeight: '800',
+      color: colors.text,
+      marginBottom: 10,
+    },
+
+    transcriptionText: {
+      fontSize: 14,
+      lineHeight: 22,
+      color: colors.textSecondary,
+    },
+
+    // Registrar visita
+
+    visitButton: {
+      height: 54,
+      borderRadius: 16,
+      backgroundColor: colors.primary,
+      marginTop: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+
+    visitButtonIcon: {
+      color: colors.onPrimary,
+      fontSize: 20,
+      fontWeight: '800',
+    },
+
+    visitButtonText: {
+      color: colors.onPrimary,
+      fontSize: 15,
+      fontWeight: '800',
+    },
+
+    // Modal
+
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.45)',
+      justifyContent: 'flex-end',
+    },
+
+    modalCard: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      padding: 22,
+      paddingBottom: 30,
+    },
+
+    modalTitle: {
+      fontSize: 24,
+      fontWeight: '800',
+      color: colors.text,
+    },
+
+    modalSubtitle: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 5,
+      marginBottom: 18,
+    },
+
+    visitOption: {
+      backgroundColor: colors.backgroundElement,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 15,
+      marginBottom: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+
+    visitOptionIcon: {
+      fontSize: 28,
+      width: 48,
+      textAlign: 'center',
+    },
+
+    visitOptionContent: {
+      flex: 1,
+      marginLeft: 10,
+    },
+
+    visitOptionTitle: {
+      fontSize: 15,
+      fontWeight: '800',
+      color: colors.text,
+    },
+
+    visitOptionText: {
+      fontSize: 12,
+      lineHeight: 17,
+      color: colors.textSecondary,
+      marginTop: 3,
+    },
+
+    modalCancelButton: {
+      height: 50,
+      borderRadius: 15,
+      backgroundColor: colors.backgroundSelected,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginTop: 4,
+    },
+
+    modalCancelText: {
+      fontSize: 14,
+      fontWeight: '800',
+      color: colors.text,
+    },
+
+    // Contacto
+
+    contactButton: {
+      minHeight: 62,
+      borderRadius: 16,
+      backgroundColor: colors.backgroundElement,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginTop: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+
+    contactButtonIcon: {
+      fontSize: 24,
+      width: 40,
+    },
+
+    contactButtonContent: {
+      flex: 1,
+    },
+
+    contactButtonLabel: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+    },
+
+    contactButtonText: {
+      fontSize: 14,
+      color: colors.text,
+      fontWeight: '700',
+      marginTop: 2,
+    },
+
+    // Cargando
+
+    loadingText: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      marginTop: 14,
+      textAlign: 'center',
+    },
+
+    // Error
+
+    errorContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    errorIcon: {
+      fontSize: 50,
+    },
+
+    errorTitle: {
+      fontSize: 24,
+      fontWeight: '800',
+      color: colors.text,
+      marginTop: 15,
+    },
+
+    errorText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: 8,
+    },
+
+    backButtonLarge: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 25,
+      paddingVertical: 13,
+      borderRadius: 14,
+      marginTop: 20,
+    },
+
+    backButtonText: {
+      color: colors.onPrimary,
+      fontWeight: '800',
+      fontSize: 14,
+    },
+  });
+
+  // --------------------------------------------------
   // CARGANDO LUGAR
   // --------------------------------------------------
 
@@ -686,7 +1089,7 @@ export default function LugarDetalleScreen() {
           <View style={styles.errorContainer}>
             <ActivityIndicator
               size="large"
-              color="#2F7F8F"
+              color={colors.primary}
             />
 
             <Text style={styles.loadingText}>
@@ -783,6 +1186,19 @@ export default function LugarDetalleScreen() {
                 source={lugar.imagen}
                 style={styles.heroImage}
                 resizeMode="cover"
+                onLoad={() => {
+                  console.log('IMAGEN DEL DETALLE CARGADA:', {
+                    lugar: lugar.nombre,
+                    imagen: lugar.imagen,
+                  });
+                }}
+                onError={(evento) => {
+                  console.error('ERROR AL CARGAR IMAGEN DEL DETALLE:', {
+                    lugar: lugar.nombre,
+                    imagen: lugar.imagen,
+                    error: evento.nativeEvent.error,
+                  });
+                }}
               />
             ) : (
               <Text style={styles.heroIcon}>
@@ -877,19 +1293,33 @@ export default function LugarDetalleScreen() {
               </Text>
             </Pressable>
 
-            <Pressable
-              style={styles.secondaryButton}
-              onPress={alternarAudio}
-            >
-              <Text style={styles.secondaryButtonIcon}>
-                {audioStatus.playing ? '⏸️' : '🎧'}
-              </Text>
+            {!fuenteAudioguia && (
+              <Pressable
+                style={styles.secondaryButton}
+                onPress={() =>
+                  Alert.alert(
+                    'Audioguía no disponible',
+                    'La audioguía de este lugar todavía no está disponible.',
+                  )
+                }
+              >
+                <Text style={styles.secondaryButtonIcon}>🎧</Text>
 
-              <Text style={styles.secondaryButtonText}>
-                {audioStatus.playing ? 'Pausar' : 'Audioguía'}
-              </Text>
-            </Pressable>
+                <Text style={styles.secondaryButtonText}>
+                  Sin audioguía
+                </Text>
+              </Pressable>
+            )}
           </View>
+
+          {fuenteAudioguia && (
+            <ReproductorAudioguia
+              key={lugar.id}
+              fuente={fuenteAudioguia}
+              lugarId={lugar.id}
+              nombre={lugar.nombre}
+            />
+          )}
 
           {/* Transcripción */}
 
@@ -933,13 +1363,11 @@ export default function LugarDetalleScreen() {
             onPress={abrirRegistroDeVisita}
           >
             <Text style={styles.visitButtonIcon}>
-              {visitaRegistrada ? '✓' : '📍'}
+              📍
             </Text>
 
             <Text style={styles.visitButtonText}>
-              {visitaRegistrada
-                ? 'Visita registrada'
-                : 'Registrar visita'}
+              Registrar visita
             </Text>
           </Pressable>
 
@@ -1015,17 +1443,14 @@ export default function LugarDetalleScreen() {
                   </View>
                 </Pressable>
 
+
                 {/* Manual */}
 
                 <Pressable
                   style={styles.visitOption}
                   onPress={() => {
                     setMostrarOpcionesVisita(false);
-
-                    Alert.alert(
-                      'Registro manual',
-                      'El registro manual lo agregaremos en el próximo paso.'
-                    );
+                    registrarVisitaManual();
                   }}
                 >
                   <Text style={styles.visitOptionIcon}>
@@ -1038,7 +1463,7 @@ export default function LugarDetalleScreen() {
                     </Text>
 
                     <Text style={styles.visitOptionText}>
-                      Elegí esta opción si querés registrar la visita manualmente.
+                      Registrá tu visita sin utilizar la ubicación GPS.
                     </Text>
                   </View>
                 </Pressable>
@@ -1107,490 +1532,3 @@ export default function LugarDetalleScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#F7F3E8',
-  },
-
-  container: {
-    flex: 1,
-    backgroundColor: '#F7F3E8',
-    paddingHorizontal: 20,
-  },
-
-  scrollContent: {
-    paddingBottom: 30,
-  },
-
-  // ------------------------------------------
-  // Encabezado
-  // ------------------------------------------
-
-  header: {
-    height: 58,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-
-  backButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#DCE9E8',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  backIcon: {
-    fontSize: 32,
-    color: '#253A32',
-    lineHeight: 36,
-  },
-
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#253A32',
-  },
-
-  // ------------------------------------------
-  // Favoritos
-  // ------------------------------------------
-
-  favoriteButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E3E1D8',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  favoriteButtonActive: {
-    backgroundColor: '#E5EFE4',
-    borderColor: '#D5E2D3',
-  },
-
-  favoriteIcon: {
-    fontSize: 27,
-    color: '#2F7F8F',
-  },
-
-  favoriteIconActive: {
-    color: '#6B8E5A',
-  },
-
-  // ------------------------------------------
-  // Imagen principal
-  // ------------------------------------------
-
-  hero: {
-    height: 190,
-    borderRadius: 24,
-    backgroundColor: '#DCE9E8',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-
-  heroImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 24,
-  },
-
-  heroIcon: {
-    fontSize: 70,
-  },
-
-  // ------------------------------------------
-  // Categoría
-  // ------------------------------------------
-
-  categoryBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#E5EFE4',
-    borderRadius: 20,
-    paddingHorizontal: 13,
-    paddingVertical: 7,
-    marginTop: 18,
-  },
-
-  categoryText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#6B8E5A',
-  },
-
-  // ------------------------------------------
-  // Título y descripción
-  // ------------------------------------------
-
-  title: {
-    fontSize: 30,
-    fontWeight: '800',
-    color: '#253A32',
-    marginTop: 10,
-  },
-
-  description: {
-    fontSize: 15,
-    lineHeight: 23,
-    color: '#5F5C55',
-    marginTop: 10,
-  },
-
-  // ------------------------------------------
-  // Información
-  // ------------------------------------------
-
-  infoCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 16,
-    marginTop: 20,
-    borderWidth: 1,
-    borderColor: '#E3E1D8',
-  },
-
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
-  infoIcon: {
-    fontSize: 22,
-    width: 36,
-  },
-
-  infoContent: {
-    flex: 1,
-  },
-
-  infoLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#77736B',
-    textTransform: 'uppercase',
-  },
-
-  infoValue: {
-    fontSize: 14,
-    color: '#30352F',
-    fontWeight: '600',
-    marginTop: 2,
-  },
-
-  separator: {
-    height: 1,
-    backgroundColor: '#EAE7DE',
-    marginVertical: 13,
-  },
-
-  // ------------------------------------------
-  // Acciones
-  // ------------------------------------------
-
-  actions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 18,
-  },
-
-  primaryButton: {
-    flex: 1,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: '#2F7F8F',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-  },
-
-  primaryButtonIcon: {
-    fontSize: 18,
-  },
-
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '800',
-  },
-
-  secondaryButton: {
-    flex: 1,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: '#E5EFE4',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-  },
-
-  secondaryButtonIcon: {
-    fontSize: 18,
-  },
-
-  secondaryButtonText: {
-    color: '#253A32',
-    fontSize: 14,
-    fontWeight: '800',
-  },
-
-  // ------------------------------------------
-  // Transcripción
-  // ------------------------------------------
-
-  transcriptionButton: {
-    minHeight: 52,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E3E1D8',
-    marginTop: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-
-  transcriptionButtonIcon: {
-    fontSize: 18,
-  },
-
-  transcriptionButtonText: {
-    color: '#253A32',
-    fontSize: 14,
-    fontWeight: '800',
-  },
-
-  transcriptionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 18,
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: '#E3E1D8',
-  },
-
-  transcriptionTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#253A32',
-    marginBottom: 10,
-  },
-
-  transcriptionText: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: '#5F5C55',
-  },
-
-  // ------------------------------------------
-  // Registrar visita
-  // ------------------------------------------
-
-  visitButton: {
-    height: 54,
-    borderRadius: 16,
-    backgroundColor: '#253A32',
-    marginTop: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-
-  visitButtonIcon: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '800',
-  },
-
-  visitButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '800',
-  },
-
-  // ------------------------------------------
-  // Modal
-  // ------------------------------------------
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    justifyContent: 'flex-end',
-  },
-
-  modalCard: {
-    backgroundColor: '#F7F3E8',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 22,
-    paddingBottom: 30,
-  },
-
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#253A32',
-  },
-
-  modalSubtitle: {
-    fontSize: 14,
-    color: '#77736B',
-    marginTop: 5,
-    marginBottom: 18,
-  },
-
-  visitOption: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#E3E1D8',
-    padding: 15,
-    marginBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
-  visitOptionIcon: {
-    fontSize: 28,
-    width: 48,
-    textAlign: 'center',
-  },
-
-  visitOptionContent: {
-    flex: 1,
-    marginLeft: 10,
-  },
-
-  visitOptionTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#253A32',
-  },
-
-  visitOptionText: {
-    fontSize: 12,
-    lineHeight: 17,
-    color: '#77736B',
-    marginTop: 3,
-  },
-
-  modalCancelButton: {
-    height: 50,
-    borderRadius: 15,
-    backgroundColor: '#DCE9E8',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-
-  modalCancelText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#253A32',
-  },
-
-  // ------------------------------------------
-  // Contacto
-  // ------------------------------------------
-
-  contactButton: {
-    minHeight: 62,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E3E1D8',
-    marginTop: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
-  contactButtonIcon: {
-    fontSize: 24,
-    width: 40,
-  },
-
-  contactButtonContent: {
-    flex: 1,
-  },
-
-  contactButtonLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#77736B',
-    textTransform: 'uppercase',
-  },
-
-  contactButtonText: {
-    fontSize: 14,
-    color: '#30352F',
-    fontWeight: '700',
-    marginTop: 2,
-  },
-
-  // ------------------------------------------
-  // Cargando
-  // ------------------------------------------
-
-  loadingText: {
-    fontSize: 15,
-    color: '#5F5C55',
-    marginTop: 14,
-    textAlign: 'center',
-  },
-
-  // ------------------------------------------
-  // Error
-  // ------------------------------------------
-
-  errorContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  errorIcon: {
-    fontSize: 50,
-  },
-
-  errorTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#253A32',
-    marginTop: 15,
-  },
-
-  errorText: {
-    fontSize: 14,
-    color: '#77736B',
-    textAlign: 'center',
-    marginTop: 8,
-  },
-
-  backButtonLarge: {
-    backgroundColor: '#2F7F8F',
-    paddingHorizontal: 25,
-    paddingVertical: 13,
-    borderRadius: 14,
-    marginTop: 20,
-  },
-
-  backButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 14,
-  },
-});

@@ -18,12 +18,23 @@ export interface AlmacenTokensPush {
   borrar(tokenExpo: string): Promise<void>;
   tokensDe(usuarioIds: string[]): Promise<string[]>;
   descartar(tokens: string[]): Promise<void>;
+  listar(usuarioId: string): Promise<
+    Array<{
+      plataforma: PlataformaPush;
+      creadoEn: Date;
+    }>
+  >;
 }
 
 /** Lo que completan los alumnos (2): cómo se mandan las push. */
 export interface EnviadorPush {
-  /** Devuelve los tokens que Expo informó como dados de baja (`DeviceNotRegistered`). */
-  enviar(mensajes: MensajePush[]): Promise<{ tokensInvalidos: string[] }>;
+  /**
+   * Devuelve los tokens dados de baja y si Expo aceptó el envío.
+   * aceptado es true únicamente si todos los lotes fueron aceptados.
+   */
+  enviar(
+    mensajes: MensajePush[],
+  ): Promise<{ tokensInvalidos: string[]; aceptado: boolean }>;
 }
 
 export const ALMACEN_TOKENS_PUSH = Symbol('ALMACEN_TOKENS_PUSH');

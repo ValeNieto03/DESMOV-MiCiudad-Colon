@@ -10,21 +10,28 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
-import { lugares } from '@/data/lugares';
-
+import { useCatalogo } from '@/servicios/CatalogoProvider';
 import {
     obtenerUsuarioActual,
 } from '@/servicios/autenticacion';
 
-import {
-    guardarVisita,
-    Visita,
-} from '@/servicios/visitas';
+import type { Visita } from '@/servicios/visitas';
+import { confirmarRegistroVisita } from '@/servicios/registro-visitas';
+
+import { Colors } from '@/constants/theme';
+import { useThemeContext } from '@/contexts/ThemeContext';
 
 const PREFIJO_QR = 'MICiudad:lugar:';
 
 export default function EscanearQRScreen() {
+    const { colors } = useThemeContext();
+    const styles = crearEstilos(colors);
+
     const router = useRouter();
+    const {
+        lugaresDisponibles: lugares,
+        cargandoCatalogo,
+    } = useCatalogo();
 
     const { lugarId } = useLocalSearchParams<{
         lugarId?: string;
@@ -188,14 +195,7 @@ export default function EscanearQRScreen() {
                     return;
                 }
 
-                console.log(
-                    '👤 USUARIO ACTUAL:',
-                    usuario
-                );
-
-                // ------------------------------------------
-                // 7. Crear la visita
-                // ------------------------------------------
+                console.log('USUARIO ACTUAL:', usuario);
 
                 const nuevaVisita: Visita = {
                     id: `vis-${Date.now()}`,
@@ -208,50 +208,28 @@ export default function EscanearQRScreen() {
                     sincronizada: false,
                 };
 
-                try {
-                    guardarVisita(nuevaVisita);
-
-                    console.log(
-                        '✅ VISITA QR GUARDADA:',
-                        nuevaVisita
-                    );
-
-                    // ------------------------------------------
-                    // 8. Avisar que se registró correctamente
-                    // ------------------------------------------
-
-                    Alert.alert(
-                        '¡Visita registrada!',
-                        `Visitaste ${lugarQR.nombre}.`,
-                        [
-                            {
-                                text: 'Aceptar',
-                                onPress: () => {
-                                    router.back();
+                confirmarRegistroVisita(
+                    nuevaVisita,
+                    lugarQR.nombre,
+                    (resultado) => {
+                        Alert.alert(
+                            resultado === 'actualizada'
+                                ? '¡Visita actualizada!'
+                                : '¡Visita registrada!',
+                            resultado === 'actualizada'
+                                ? `Se actualizó tu visita a ${lugarQR.nombre}.`
+                                : `Visitaste ${lugarQR.nombre}.`,
+                            [
+                                {
+                                    text: 'Aceptar',
+                                    onPress: () => {
+                                        router.back();
+                                    },
                                 },
-                            },
-                        ]
-                    );
-                } catch (error) {
-                    console.error(
-                        'Error al guardar la visita:',
-                        error
-                    );
-
-                    Alert.alert(
-                        'Error',
-                        'No se pudo guardar la visita. Intentá nuevamente.',
-                        [
-                            {
-                                text: 'Intentar de nuevo',
-                                onPress: () => {
-                                    procesandoQR.current = false;
-                                    setEscaneando(true);
-                                },
-                            },
-                        ]
-                    );
-                }
+                            ]
+                        );
+                    }
+                );
             })
             .catch((error) => {
                 console.error(
@@ -274,8 +252,6 @@ export default function EscanearQRScreen() {
                 );
             });
     };
-
-    // ------------------------------------------
     // Permiso de cámara
     // ------------------------------------------
 
@@ -356,7 +332,7 @@ export default function EscanearQRScreen() {
                         barcodeTypes: ['qr'],
                     }}
                     onBarcodeScanned={
-                        escaneando
+                        escaneando && !cargandoCatalogo
                             ? manejarCodigoEscaneado
                             : undefined
                     }
@@ -411,163 +387,167 @@ export default function EscanearQRScreen() {
     );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#111',
-    },
+function crearEstilos(
+    colors: (typeof Colors)[keyof typeof Colors],
+) {
+    return StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: colors.background,
+        },
 
-    center: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 24,
-    },
+        center: {
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 24,
+        },
 
-    header: {
-        paddingHorizontal: 20,
-        paddingTop: 20,
-        paddingBottom: 16,
-        alignItems: 'center',
-    },
+        header: {
+            paddingHorizontal: 20,
+            paddingTop: 20,
+            paddingBottom: 16,
+            alignItems: 'center',
+        },
 
-    title: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#fff',
-        textAlign: 'center',
-        marginBottom: 10,
-    },
+        title: {
+            fontSize: 24,
+            fontWeight: '700',
+            color: colors.text,
+            textAlign: 'center',
+            marginBottom: 10,
+        },
 
-    description: {
-        fontSize: 16,
-        color: '#ddd',
-        textAlign: 'center',
-        lineHeight: 23,
-        marginBottom: 25,
-    },
+        description: {
+            fontSize: 16,
+            color: colors.textSecondary,
+            textAlign: 'center',
+            lineHeight: 23,
+            marginBottom: 25,
+        },
 
-    text: {
-        color: '#fff',
-        fontSize: 16,
-    },
+        text: {
+            color: colors.text,
+            fontSize: 16,
+        },
 
-    lugarEsperado: {
-        color: '#ddd',
-        fontSize: 15,
-        textAlign: 'center',
-        lineHeight: 22,
-    },
+        lugarEsperado: {
+            color: colors.textSecondary,
+            fontSize: 15,
+            textAlign: 'center',
+            lineHeight: 22,
+        },
 
-    lugarNombre: {
-        color: '#fff',
-        fontSize: 18,
-        fontWeight: '700',
-    },
+        lugarNombre: {
+            color: colors.primary,
+            fontSize: 18,
+            fontWeight: '700',
+        },
 
-    cameraContainer: {
-        flex: 1,
-        marginHorizontal: 20,
-        borderRadius: 20,
-        overflow: 'hidden',
-        position: 'relative',
-    },
+        cameraContainer: {
+            flex: 1,
+            marginHorizontal: 20,
+            borderRadius: 20,
+            overflow: 'hidden',
+            position: 'relative',
+        },
 
-    camera: {
-        flex: 1,
-    },
+        camera: {
+            flex: 1,
+        },
 
-    scanBox: {
-        position: 'absolute',
-        width: 250,
-        height: 250,
-        top: '50%',
-        left: '50%',
-        marginLeft: -125,
-        marginTop: -125,
-    },
+        scanBox: {
+            position: 'absolute',
+            width: 250,
+            height: 250,
+            top: '50%',
+            left: '50%',
+            marginLeft: -125,
+            marginTop: -125,
+        },
 
-    corner: {
-        position: 'absolute',
-        width: 40,
-        height: 40,
-        borderColor: '#fff',
-    },
+        corner: {
+            position: 'absolute',
+            width: 40,
+            height: 40,
+            borderColor: colors.primary,
+        },
 
-    topLeft: {
-        top: 0,
-        left: 0,
-        borderTopWidth: 4,
-        borderLeftWidth: 4,
-    },
+        topLeft: {
+            top: 0,
+            left: 0,
+            borderTopWidth: 4,
+            borderLeftWidth: 4,
+        },
 
-    topRight: {
-        top: 0,
-        right: 0,
-        borderTopWidth: 4,
-        borderRightWidth: 4,
-    },
+        topRight: {
+            top: 0,
+            right: 0,
+            borderTopWidth: 4,
+            borderRightWidth: 4,
+        },
 
-    bottomLeft: {
-        bottom: 0,
-        left: 0,
-        borderBottomWidth: 4,
-        borderLeftWidth: 4,
-    },
+        bottomLeft: {
+            bottom: 0,
+            left: 0,
+            borderBottomWidth: 4,
+            borderLeftWidth: 4,
+        },
 
-    bottomRight: {
-        bottom: 0,
-        right: 0,
-        borderBottomWidth: 4,
-        borderRightWidth: 4,
-    },
+        bottomRight: {
+            bottom: 0,
+            right: 0,
+            borderBottomWidth: 4,
+            borderRightWidth: 4,
+        },
 
-    bottom: {
-        padding: 20,
-        alignItems: 'center',
-    },
+        bottom: {
+            padding: 20,
+            alignItems: 'center',
+        },
 
-    instruction: {
-        color: '#ddd',
-        fontSize: 15,
-        textAlign: 'center',
-        marginBottom: 15,
-    },
+        instruction: {
+            color: colors.textSecondary,
+            fontSize: 15,
+            textAlign: 'center',
+            marginBottom: 15,
+        },
 
-    button: {
-        backgroundColor: '#2e7d32',
-        paddingHorizontal: 24,
-        paddingVertical: 14,
-        borderRadius: 10,
-        marginBottom: 12,
-    },
+        button: {
+            backgroundColor: colors.primary,
+            paddingHorizontal: 24,
+            paddingVertical: 14,
+            borderRadius: 10,
+            marginBottom: 12,
+        },
 
-    buttonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
-    },
+        buttonText: {
+            color: colors.onPrimary,
+            fontSize: 16,
+            fontWeight: '600',
+        },
 
-    secondaryButton: {
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-    },
+        secondaryButton: {
+            paddingHorizontal: 24,
+            paddingVertical: 12,
+        },
 
-    secondaryButtonText: {
-        color: '#fff',
-        fontSize: 16,
-    },
+        secondaryButtonText: {
+            color: colors.primary,
+            fontSize: 16,
+        },
 
-    cancelButton: {
-        backgroundColor: '#333',
-        paddingHorizontal: 30,
-        paddingVertical: 12,
-        borderRadius: 10,
-    },
+        cancelButton: {
+            backgroundColor: colors.backgroundSelected,
+            paddingHorizontal: 30,
+            paddingVertical: 12,
+            borderRadius: 10,
+        },
 
-    cancelButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-});
+        cancelButtonText: {
+            color: colors.text,
+            fontSize: 16,
+            fontWeight: '600',
+        },
+    });
+}

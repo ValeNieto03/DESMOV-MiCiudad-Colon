@@ -9,11 +9,14 @@ import {
 import { router, usePathname } from 'expo-router';
 
 import { obtenerRolActual } from '@/servicios/autenticacion';
+import { useThemeContext } from '@/contexts/ThemeContext';
 
 type Rol = 'admin' | 'turista' | null;
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const { colors } = useThemeContext();
+
   const [rol, setRol] = useState<Rol>(null);
   const [verificandoRol, setVerificandoRol] = useState(true);
 
@@ -40,7 +43,7 @@ export default function BottomNav() {
       }
     }
 
-    cargarRol();
+    void cargarRol();
 
     return () => {
       activo = false;
@@ -86,7 +89,15 @@ export default function BottomNav() {
   ];
 
   return (
-    <View style={styles.contenedor}>
+    <View
+      style={[
+        styles.contenedor,
+        {
+          backgroundColor: colors.backgroundElement,
+          borderTopColor: colors.border,
+        },
+      ]}
+    >
       {opciones.map((opcion) => {
         const activo =
           pathname === opcion.ruta ||
@@ -97,14 +108,24 @@ export default function BottomNav() {
           <Pressable
             key={opcion.ruta}
             style={styles.opcion}
-            onPress={() => router.push(opcion.ruta as any)}
+            onPress={() => {
+              if (!activo) {
+                router.navigate(opcion.ruta as any);
+              }
+            }}
           >
-            <Text style={styles.icono}>{opcion.icono}</Text>
+            <Text style={styles.icono}>
+              {opcion.icono}
+            </Text>
 
             <Text
               style={[
                 styles.texto,
-                activo && styles.textoActivo,
+                { color: colors.textSecondary },
+                activo && {
+                  color: colors.primary,
+                  fontWeight: '800',
+                },
               ]}
               numberOfLines={1}
             >
@@ -120,9 +141,7 @@ export default function BottomNav() {
 const styles = StyleSheet.create({
   contenedor: {
     height: 70,
-    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: '#E8E5DD',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
@@ -139,11 +158,6 @@ const styles = StyleSheet.create({
   },
   texto: {
     fontSize: 10,
-    color: '#77736B',
     fontWeight: '600',
-  },
-  textoActivo: {
-    color: '#253A32',
-    fontWeight: '800',
   },
 });

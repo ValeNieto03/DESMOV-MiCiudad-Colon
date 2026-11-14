@@ -1,5 +1,4 @@
-@'
-# Dependencias y compilaciones
+﻿# Dependencias y compilaciones
 node_modules/
 dist/
 coverage/
@@ -13,20 +12,22 @@ coverage/
 .DS_Store
 *.tsbuildinfo
 
-# Bases de datos locales
+# Bases de datos y datos locales
 /datos/
 *.sqlite
 *.sqlite3
 *.db
-*.backup
 *.sqlite-journal
 
-# Excepcion: base inicial compartida
-!semilla/api-inicial.sqlite
-
-# Resultados temporales
+# Archivos multimedia y resultados locales
+/archivos/
 resultado-e2e.txt
-'@ | Set-Content ".\api-mi-ciudad\.gitignore" -Encoding UTF8
-# Copias de seguridad de codigo
+resultado-verificacion.txt
+
+# Copias de seguridad
+*.backup
 *.bak
 *.respaldo-*
+
+# Excepción: base inicial compartida
+!semilla/api-inicial.sqlite

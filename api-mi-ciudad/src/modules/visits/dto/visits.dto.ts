@@ -11,7 +11,7 @@ export const POR_PAGINA_MAXIMO_VISITAS = 500;
 const MENSAJE_NOTA = `La nota tiene que ser un texto de hasta ${LARGO_MAXIMO_NOTA} caracteres.`;
 const MENSAJE_FOTO = 'La foto no es válida.';
 
-export class ListarVisitasDto extends PaginacionHasta(POR_PAGINA_MAXIMO_VISITAS) {}
+export class ListarVisitasDto extends PaginacionHasta(POR_PAGINA_MAXIMO_VISITAS) { }
 
 export class CrearVisitaDto {
   @ApiPropertyOptional({

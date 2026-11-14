@@ -23,7 +23,7 @@ export class VisitasServicio {
     private readonly lugares: LugaresServicio,
     private readonly archivos: VerificadorArchivos,
     private readonly reloj: Reloj,
-  ) {}
+  ) { }
 
   /** En orden: la más vieja primero; si empatan, por id (AGENTS §4.2). */
   async listar(usuarioId: string, pedido: ListarVisitasDto): Promise<{ datos: Visita[]; meta: Meta }> {
@@ -71,19 +71,29 @@ export class VisitasServicio {
     return { visita: aContrato(fila), creada: true };
   }
 
-  /** Sólo la foto y la nota cambian; la foto puede llegar después que la visita. */
+  /** Actualiza los datos de una visita existente. */
+
   async actualizar(usuarioId: string, id: string, dto: ActualizarVisitaDto): Promise<Visita> {
     const visita = esIdConPrefijo(id, 'vis') ? await this.repo.findOneBy({ id }) : null;
     if (!visita) throw new ErrorApi('VISITA_NO_ENCONTRADA');
     if (visita.usuarioId !== usuarioId) throw new ErrorApi('SIN_PERMISO');
+
     const cambios: Partial<Pick<VisitaEntidad, 'fotoClave' | 'nota'>> = {};
+
     if (dto.fotoUri !== undefined) {
       cambios.fotoClave =
         dto.fotoUri === null ? null : await this.archivos.claveSubida(dto.fotoUri, 'imagen');
     }
+
     const nota = normalizarNota(dto.nota);
-    if (nota !== undefined) cambios.nota = nota;
-    if (Object.keys(cambios).length > 0) await this.repo.update({ id }, cambios);
+    if (nota !== undefined) {
+      cambios.nota = nota;
+    }
+
+    if (Object.keys(cambios).length > 0) {
+      await this.repo.update({ id }, cambios);
+    }
+
     return aContrato({ ...visita, ...cambios });
   }
 

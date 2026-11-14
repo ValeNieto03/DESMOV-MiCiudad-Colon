@@ -17,7 +17,13 @@ import {
   type LugarAPI,
 } from '@/servicios/api';
 
+import { Colors } from '@/constants/theme';
+import { useThemeContext } from '@/contexts/ThemeContext';
+
 export default function PruebaAPIScreen() {
+  const { colors } = useThemeContext();
+  const styles = crearEstilos(colors);
+
   const [cargando, setCargando] = useState(false);
   const [resultado, setResultado] = useState('');
   const [lugares, setLugares] = useState<LugarAPI[]>([]);
@@ -77,7 +83,9 @@ export default function PruebaAPIScreen() {
           </Text>
         </Pressable>
 
-        {cargando && <ActivityIndicator size="large" />}
+        {cargando && (
+          <ActivityIndicator size="large" color={colors.primary} />
+        )}
 
         <View style={styles.resultCard}>
           <Text style={styles.result}>{resultado}</Text>
@@ -88,9 +96,11 @@ export default function PruebaAPIScreen() {
         {lugares.map((lugar) => (
           <View key={lugar.id} style={styles.placeCard}>
             <Text style={styles.placeName}>{lugar.nombre}</Text>
+
             <Text style={styles.placeDescription}>
               {lugar.descripcionCorta ?? lugar.descripcion}
             </Text>
+
             <Text style={styles.coordinates}>
               {lugar.coordenadas.latitud}, {lugar.coordenadas.longitud}
             </Text>
@@ -105,74 +115,82 @@ export default function PruebaAPIScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F7F5EF',
-  },
-  content: {
-    padding: 20,
-    gap: 14,
-  },
-  title: {
-    fontSize: 27,
-    fontWeight: '700',
-    color: '#243D32',
-  },
-  description: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#5D625B',
-  },
-  button: {
-    backgroundColor: '#285943',
-    padding: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  resultCard: {
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-  },
-  result: {
-    fontSize: 15,
-    lineHeight: 23,
-    color: '#243D32',
-  },
-  subtitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#243D32',
-    marginTop: 6,
-  },
-  placeCard: {
-    backgroundColor: '#FFFFFF',
-    padding: 14,
-    borderRadius: 12,
-    gap: 6,
-  },
-  placeName: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#243D32',
-  },
-  placeDescription: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#5D625B',
-  },
-  coordinates: {
-    fontSize: 12,
-    color: '#777777',
-  },
-  footer: {
-    color: '#5D625B',
-    marginBottom: 20,
-  },
-});
+function crearEstilos(
+  colors: (typeof Colors)[keyof typeof Colors],
+) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      padding: 20,
+      gap: 14,
+    },
+    title: {
+      fontSize: 27,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    description: {
+      fontSize: 15,
+      lineHeight: 22,
+      color: colors.textSecondary,
+    },
+    button: {
+      backgroundColor: colors.primary,
+      padding: 14,
+      borderRadius: 12,
+      alignItems: 'center',
+    },
+    buttonText: {
+      color: colors.onPrimary,
+      fontWeight: '700',
+      fontSize: 16,
+    },
+    resultCard: {
+      padding: 14,
+      borderRadius: 12,
+      backgroundColor: colors.backgroundElement,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    result: {
+      fontSize: 15,
+      lineHeight: 23,
+      color: colors.text,
+    },
+    subtitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.text,
+      marginTop: 6,
+    },
+    placeCard: {
+      backgroundColor: colors.backgroundElement,
+      padding: 14,
+      borderRadius: 12,
+      gap: 6,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    placeName: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    placeDescription: {
+      fontSize: 14,
+      lineHeight: 20,
+      color: colors.textSecondary,
+    },
+    coordinates: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    footer: {
+      color: colors.textSecondary,
+      marginBottom: 20,
+    },
+  });
+}

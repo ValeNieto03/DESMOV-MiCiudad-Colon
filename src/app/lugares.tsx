@@ -9,65 +9,38 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 
-import { lugares } from '@/data/lugares';
-import type { Place } from '@/data/lugares';
-import { obtenerLugaresIntegrados } from '@/servicios/lugares-integrados';
+import { useCatalogo } from '@/servicios/CatalogoProvider';
+import { useThemeContext } from '@/contexts/ThemeContext';
 
 export default function LugaresScreen() {
   const [busqueda, setBusqueda] = useState('');
   const [categoriaSeleccionada, setCategoriaSeleccionada] =
     useState('Todos');
-  const [lugaresDisponibles, setLugaresDisponibles] =
-    useState<Place[]>(lugares);
-  const [cargando, setCargando] = useState(true);
 
+  const { lugaresDisponibles, cargandoCatalogo: cargando } =
+    useCatalogo();
+
+  const { colors } = useThemeContext();
   const router = useRouter();
-
-  useEffect(() => {
-    let activo = true;
-
-    async function cargarLugares() {
-      try {
-        const resultado = await obtenerLugaresIntegrados();
-
-        if (activo) {
-          setLugaresDisponibles(resultado);
-        }
-      } catch (error) {
-        console.warn('No se pudieron cargar los lugares:', error);
-
-        if (activo) {
-          setLugaresDisponibles(lugares);
-        }
-      } finally {
-        if (activo) {
-          setCargando(false);
-        }
-      }
-    }
-
-    cargarLugares();
-
-    return () => {
-      activo = false;
-    };
-  }, []);
 
   // Creamos las categorías a partir de los lugares disponibles.
   // Así también aparecen las categorías nuevas que llegan desde la API.
-  const categorias = [
-    'Todos',
-    ...Array.from(
-      new Set(
-        lugaresDisponibles
-          .map((lugar) => lugar.categoria)
-          .filter((categoria) => categoria.trim().length > 0)
-          .sort((a, b) => a.localeCompare(b, 'es')),
+  const categorias = useMemo(
+    () => [
+      'Todos',
+      ...Array.from(
+        new Set(
+          lugaresDisponibles
+            .map((lugar) => lugar.categoria)
+            .filter((categoria) => categoria.trim().length > 0)
+            .sort((a, b) => a.localeCompare(b, 'es')),
+        ),
       ),
-    ),
-  ];
+    ],
+    [lugaresDisponibles],
+  );
 
   const lugaresFiltrados = lugaresDisponibles.filter((lugar) => {
     const textoBusqueda = busqueda.trim().toLowerCase();
@@ -83,6 +56,239 @@ export default function LugaresScreen() {
       lugar.categoria === categoriaSeleccionada;
 
     return coincideBusqueda && coincideCategoria;
+  });
+
+  const styles = StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      paddingHorizontal: 20,
+    },
+
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 15,
+    },
+
+    backButton: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      backgroundColor: colors.backgroundSelected,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 12,
+    },
+
+    backIcon: {
+      fontSize: 32,
+      color: colors.text,
+      lineHeight: 36,
+    },
+
+    headerText: {
+      flex: 1,
+    },
+
+    smallTitle: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.primary,
+      letterSpacing: 1.5,
+    },
+
+    title: {
+      fontSize: 30,
+      fontWeight: '800',
+      color: colors.text,
+      marginTop: 1,
+    },
+
+    subtitle: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 8,
+      marginBottom: 14,
+    },
+
+    searchContainer: {
+      height: 48,
+      backgroundColor: colors.inputBackground,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 14,
+      marginBottom: 12,
+    },
+
+    searchIcon: {
+      fontSize: 18,
+      marginRight: 8,
+    },
+
+    searchInput: {
+      flex: 1,
+      fontSize: 15,
+      color: colors.text,
+    },
+
+    categoriesWrapper: {
+      height: 40,
+      marginBottom: 8,
+      justifyContent: 'center',
+    },
+
+    categoriesContent: {
+      paddingLeft: 2,
+      paddingRight: 20,
+      alignItems: 'center',
+    },
+
+    categoryButton: {
+      flexShrink: 0,
+      minHeight: 36,
+      backgroundColor: colors.backgroundElement,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 18,
+      paddingHorizontal: 15,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 8,
+    },
+
+    categoryButtonActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+
+    categoryText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+
+    categoryTextActive: {
+      color: colors.onPrimary,
+    },
+
+    resultsHeader: {
+      marginBottom: 8,
+      paddingHorizontal: 2,
+    },
+
+    resultsText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+
+    list: {
+      paddingBottom: 30,
+    },
+
+    placeCard: {
+      backgroundColor: colors.backgroundElement,
+      borderRadius: 18,
+      padding: 14,
+      marginBottom: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+
+    placeIcon: {
+      width: 54,
+      height: 54,
+      borderRadius: 16,
+      backgroundColor: colors.successBackground,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 13,
+    },
+
+    placeIconText: {
+      fontSize: 24,
+    },
+
+    placeInfo: {
+      flex: 1,
+    },
+
+    placeName: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.text,
+    },
+
+    placeCategory: {
+      fontSize: 12,
+      color: colors.primary,
+      fontWeight: '600',
+      marginTop: 3,
+    },
+
+    placeDescription: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      lineHeight: 17,
+      marginTop: 4,
+    },
+
+    arrow: {
+      fontSize: 28,
+      color: colors.primary,
+      paddingLeft: 8,
+    },
+
+    emptyContainer: {
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingTop: 50,
+    },
+
+    emptyIcon: {
+      fontSize: 38,
+      marginBottom: 12,
+    },
+
+    emptyTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.text,
+      textAlign: 'center',
+    },
+
+    emptyText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: 8,
+      lineHeight: 20,
+    },
+
+    clearButton: {
+      marginTop: 18,
+      backgroundColor: colors.primary,
+      borderRadius: 20,
+      paddingVertical: 10,
+      paddingHorizontal: 18,
+    },
+
+    clearButtonText: {
+      color: colors.onPrimary,
+      fontSize: 13,
+      fontWeight: '700',
+    },
   });
 
   return (
@@ -117,7 +323,7 @@ export default function LugaresScreen() {
           <TextInput
             style={styles.searchInput}
             placeholder="Buscar lugares..."
-            placeholderTextColor="#99958C"
+            placeholderTextColor={colors.textSecondary}
             value={busqueda}
             onChangeText={setBusqueda}
             returnKeyType="search"
@@ -249,236 +455,3 @@ export default function LugaresScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#F7F3E8',
-  },
-
-  container: {
-    flex: 1,
-    backgroundColor: '#F7F3E8',
-    paddingHorizontal: 20,
-  },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 15,
-  },
-
-  backButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#DCE9E8',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-
-  backIcon: {
-    fontSize: 32,
-    color: '#253A32',
-    lineHeight: 36,
-  },
-
-  headerText: {
-    flex: 1,
-  },
-
-  smallTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#2F7F8F',
-    letterSpacing: 1.5,
-  },
-
-  title: {
-    fontSize: 30,
-    fontWeight: '800',
-    color: '#253A32',
-    marginTop: 1,
-  },
-
-  subtitle: {
-    fontSize: 14,
-    color: '#77736B',
-    marginTop: 8,
-    marginBottom: 14,
-  },
-
-  searchContainer: {
-    height: 48,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E3E1D8',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    marginBottom: 12,
-  },
-
-  searchIcon: {
-    fontSize: 18,
-    marginRight: 8,
-  },
-
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    color: '#30352F',
-  },
-
-  categoriesWrapper: {
-    height: 40,
-    marginBottom: 8,
-    justifyContent: 'center',
-  },
-
-  categoriesContent: {
-    paddingLeft: 2,
-    paddingRight: 20,
-    alignItems: 'center',
-  },
-
-  categoryButton: {
-    flexShrink: 0,
-    minHeight: 36,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#D8D2C4',
-    borderRadius: 18,
-    paddingHorizontal: 15,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-
-  categoryButtonActive: {
-    backgroundColor: '#253A32',
-    borderColor: '#253A32',
-  },
-
-  categoryText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#66635D',
-  },
-
-  categoryTextActive: {
-    color: '#FFFFFF',
-  },
-
-  resultsHeader: {
-    marginBottom: 8,
-    paddingHorizontal: 2,
-  },
-
-  resultsText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#77736B',
-  },
-
-  list: {
-    paddingBottom: 30,
-  },
-
-  placeCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 14,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E3E1D8',
-  },
-
-  placeIcon: {
-    width: 54,
-    height: 54,
-    borderRadius: 16,
-    backgroundColor: '#E5EFE4',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 13,
-  },
-
-  placeIconText: {
-    fontSize: 24,
-  },
-
-  placeInfo: {
-    flex: 1,
-  },
-
-  placeName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#30352F',
-  },
-
-  placeCategory: {
-    fontSize: 12,
-    color: '#2F7F8F',
-    fontWeight: '600',
-    marginTop: 3,
-  },
-
-  placeDescription: {
-    fontSize: 12,
-    color: '#77736B',
-    lineHeight: 17,
-    marginTop: 4,
-  },
-
-  arrow: {
-    fontSize: 28,
-    color: '#2F7F8F',
-    paddingLeft: 8,
-  },
-
-  emptyContainer: {
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 50,
-  },
-
-  emptyIcon: {
-    fontSize: 38,
-    marginBottom: 12,
-  },
-
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#253A32',
-    textAlign: 'center',
-  },
-
-  emptyText: {
-    fontSize: 14,
-    color: '#77736B',
-    textAlign: 'center',
-    marginTop: 8,
-    lineHeight: 20,
-  },
-
-  clearButton: {
-    marginTop: 18,
-    backgroundColor: '#253A32',
-    borderRadius: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-  },
-
-  clearButtonText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-});

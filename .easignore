@@ -1,0 +1,27 @@
+﻿# Dependencias y archivos generados
+node_modules/
+.expo/
+dist/
+web-build/
+.metro-health-check*
+
+# Backend: no forma parte del APK
+api-mi-ciudad/
+
+# APK anteriores
+*.apk
+
+# Respaldos y copias locales
+*.backup
+*.respaldo*
+*.bak
+app.json.backup*
+respaldo-*/
+
+# Archivos temporales
+*.log
+resultado-verificacion.txt
+
+# Control de versiones
+.git/
+.gitignore

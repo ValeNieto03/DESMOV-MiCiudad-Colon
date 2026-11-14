@@ -61,3 +61,9 @@ export interface Dispositivo {
 export interface PruebaNotificacion {
   enviadas: number;
 }
+
+/** Información segura de un dispositivo registrado para recibir push. */
+export interface DispositivoRegistrado {
+  plataforma: 'ios' | 'android';
+  creadoEn: string;
+}

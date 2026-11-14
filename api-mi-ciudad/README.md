@@ -237,11 +237,19 @@ Para **mirar** lugares, mapa y agenda no hace falta cuenta. La cuenta es para gu
 | `GET` | `/categorias` | 🌐 | Categorías de lugares |
 | `GET` | `/lugares` | 🌐 | Lugares |
 | `GET` | `/lugares/qr/:codigo` | 🌐 | Lugar de un código QR |
+| `PATCH` | `/lugares/:id/imagen` | 🔒 | Agregar una imagen a un lugar |
 | `PATCH` | `/lugares/:id/audioguia` | 🔒 | Asociar audioguía a un lugar |
+| `GET` | `/lugares/:id/audioguias` | 🔒 | Historial de audioguías de un lugar |
+| `PATCH` | `/lugares/:id/audioguias/activar` | 🔒 | Activar una audioguía anterior |
+| `PATCH` | `/lugares/:id/audioguias/:audioguiaId/transcripcion` | 🔒 | Actualizar la transcripción de una audioguía |
+| `GET` | `/lugares/:id/audioguia-activa` | 🌐 | Audioguía activa de un lugar |
 | `GET` | `/lugares/:id` | 🌐 | Detalle de un lugar |
-| `GET` | `/eventos` | 🌐 | Agenda de eventos |
-| `GET` | `/eventos/:id` | 🌐 | Detalle de un evento |
-| `PATCH` | `/eventos/:id/estado` | 🔒 | Suspender, cancelar o reprogramar un evento |
+| `GET` | `/eventos` | 🌐 | Listar eventos de la agenda |
+| `POST` | `/eventos` | 🔒 | Crear un evento (administrador) |
+| `GET` | `/eventos/:id` | 🌐 | Consultar el detalle de un evento |
+| `PATCH` | `/eventos/:id` | 🔒 | Editar un evento (administrador) |
+| `PATCH` | `/eventos/:id/reprogramar` | 🔒 | Reprogramar un evento y establecerlo como programado |
+| `PATCH` | `/eventos/:id/estado` | 🔒 | Cambiar el estado guardado de un evento (administrador) |
 | `GET` | `/yo/eventos-guardados` | 🔒 | Mis eventos guardados |
 | `PUT` | `/yo/eventos-guardados/:eventoId` | 🔒 | Guardar un evento |
 | `DELETE` | `/yo/eventos-guardados/:eventoId` | 🔒 | Dejar de guardar un evento |
@@ -250,7 +258,7 @@ Para **mirar** lugares, mapa y agenda no hace falta cuenta. La cuenta es para gu
 | `DELETE` | `/yo/favoritos/:lugarId` | 🔒 | Sacar un lugar de favoritos |
 | `GET` | `/yo/visitas` | 🔒 | Mi recorrido |
 | `POST` | `/yo/visitas` | 🔒 | Registrar una visita |
-| `PATCH` | `/yo/visitas/:id` | 🔒 | Agregar la foto o la nota a una visita |
+| `PATCH` | `/yo/visitas/:id` | 🔒 | Actualizar los datos de una visita |
 | `GET` | `/salud` | 🌐 | ¿Anda la API? |
 <!-- /tabla:endpoints -->
 

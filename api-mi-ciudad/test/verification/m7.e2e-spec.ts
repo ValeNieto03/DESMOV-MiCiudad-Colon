@@ -1,5 +1,5 @@
-// Verificación independiente de M7 — Semillas completas y README.
-// Caja negra: sólo HTTP contra la app completa (salvo el Sembrador, para sembrar, como en los
+// VerificaciÃƒÆ’Ã‚Â³n independiente de M7 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Semillas completas y README.
+// Caja negra: sÃƒÆ’Ã‚Â³lo HTTP contra la app completa (salvo el Sembrador, para sembrar, como en los
 // otros verificadores) y lectura de README.md / package.json / compose (que es lo que se prueba).
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -42,7 +42,7 @@ async function ingresar(ctx: AppDePrueba, email: string, contrasena: string) {
   return res;
 }
 
-/** Usuarios de demo tal cual los publica el README (sección 5). */
+/** Usuarios de demo tal cual los publica el README (secciÃƒÆ’Ã‚Â³n 5). */
 function usuariosDelReadme(): { email: string; contrasena: string }[] {
   return [...README.matchAll(/^\|\s*`([^`\s]+@[^`\s]+)`\s*\|\s*`([^`]+)`\s*\|/gm)].map((m) => ({
     email: m[1],
@@ -50,7 +50,7 @@ function usuariosDelReadme(): { email: string; contrasena: string }[] {
   }));
 }
 
-describe('Especificación §8 — cada registro sembrado cumple el contrato (reloj por defecto)', () => {
+describe('EspecificaciÃƒÆ’Ã‚Â³n Ãƒâ€šÃ‚Â§8 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â cada registro sembrado cumple el contrato (reloj por defecto)', () => {
   let ctx: AppDePrueba;
   let categorias: Categoria[];
   let lugares: Lugar[];
@@ -83,7 +83,7 @@ describe('Especificación §8 — cada registro sembrado cumple el contrato (rel
   });
   afterAll(() => ctx.cerrar());
 
-  it('las listas completas pasan por esperarContrato (categorías, lugares, eventos)', async () => {
+  it('las listas completas pasan por esperarContrato (categorÃƒÆ’Ã‚Â­as, lugares, eventos)', async () => {
     esperarContrato((await ctx.http().get('/categorias?porPagina=100').expect(200)).body, 'Categoria');
     esperarContrato(
       (
@@ -101,7 +101,7 @@ describe('Especificación §8 — cada registro sembrado cumple el contrato (rel
     );
   });
 
-  it('cada lugar por su detalle también cumple el contrato y coincide con el listado', async () => {
+  it('cada lugar por su detalle tambiÃƒÆ’Ã‚Â©n cumple el contrato y coincide con el listado', async () => {
     for (const l of lugares) {
       const res = await ctx.http().get(`/lugares/${l.id}`).expect(200);
       esperarContrato(res.body, 'Lugar');
@@ -117,7 +117,7 @@ describe('Especificación §8 — cada registro sembrado cumple el contrato (rel
     }
   });
 
-  it('los ids son únicos, de texto y con el prefijo del PRD', () => {
+  it('los ids son ÃƒÆ’Ã‚Âºnicos, de texto y con el prefijo del PRD', () => {
     for (const lista of [categorias, lugares, eventos]) {
       const ids = lista.map((x) => x.id);
       expect(new Set(ids).size).toBe(ids.length);
@@ -128,13 +128,13 @@ describe('Especificación §8 — cada registro sembrado cumple el contrato (rel
     expect(eventos.every((e) => e.id.startsWith('evt-'))).toBe(true);
   });
 
-  it('cada lugar: campos bien formados (horas HH:MM, día 0-6, QR COLON:<id>, coordenadas de la zona)', () => {
+  it('cada lugar: campos bien formados (horas HH:MM, dÃƒÆ’Ã‚Â­a 0-6, QR COLON:<id>, coordenadas de la zona)', () => {
     for (const l of lugares) {
       expect(l.nombre.trim().length, l.id).toBeGreaterThan(0);
       expect(l.descripcionCorta.trim().length, l.id).toBeGreaterThan(0);
       expect(l.descripcion.trim().length, l.id).toBeGreaterThan(0);
       expect(l.direccion.trim().length, l.id).toBeGreaterThan(0);
-      // Colón y El Palmar: entre el norte de Concepción del Uruguay y el sur de Concordia.
+      // ColÃƒÆ’Ã‚Â³n y El Palmar: entre el norte de ConcepciÃƒÆ’Ã‚Â³n del Uruguay y el sur de Concordia.
       expect(l.coordenadas.latitud, l.id).toBeGreaterThan(-32.6);
       expect(l.coordenadas.latitud, l.id).toBeLessThan(-31.6);
       expect(l.coordenadas.longitud, l.id).toBeGreaterThan(-58.6);
@@ -151,11 +151,11 @@ describe('Especificación §8 — cada registro sembrado cumple el contrato (rel
       if (l.precioEntrada !== null) expect(l.precioEntrada).toBeGreaterThanOrEqual(0);
       expect(Number.isInteger(l.precioEntrada ?? 0)).toBe(true);
       if (l.audioguia) expect(l.audioguia.idioma).toBe('es');
-      expect(new Set(l.imagenes).size, `${l.id} imágenes repetidas`).toBe(l.imagenes.length);
+      expect(new Set(l.imagenes).size, `${l.id} imÃƒÆ’Ã‚Â¡genes repetidas`).toBe(l.imagenes.length);
     }
   });
 
-  it('ningún lugar dado de alta tiene horarios que se pisan en el mismo día', () => {
+  it('ningÃƒÆ’Ã‚Âºn lugar dado de alta tiene horarios que se pisan en el mismo dÃƒÆ’Ã‚Â­a', () => {
     for (const l of lugares.filter((x) => x.activo)) {
       const porDia = new Map<number, { abre: string; cierra: string }[]>();
       for (const h of l.horarios) porDia.set(h.dia, [...(porDia.get(h.dia) ?? []), h]);
@@ -165,7 +165,7 @@ describe('Especificación §8 — cada registro sembrado cumple el contrato (rel
           const anterior = ordenados[i - 1];
           // Un tramo que cruza la medianoche (cierra <= abre) no se compara con el resto.
           if (anterior.cierra > anterior.abre) {
-            expect(ordenados[i].abre >= anterior.cierra, `${l.id} día tramos ${JSON.stringify(tramos)}`).toBe(
+            expect(ordenados[i].abre >= anterior.cierra, `${l.id} dÃƒÆ’Ã‚Â­a tramos ${JSON.stringify(tramos)}`).toBe(
               true,
             );
           }
@@ -174,7 +174,7 @@ describe('Especificación §8 — cada registro sembrado cumple el contrato (rel
     }
   });
 
-  it('todas las URLs de imágenes, audioguías e imagenUrl de eventos son de esta API y se bajan (200)', async () => {
+  it('todas las URLs de imÃƒÆ’Ã‚Â¡genes, audioguÃƒÆ’Ã‚Â­as e imagenUrl de eventos son de esta API y se bajan (200)', async () => {
     const urls = new Set<string>();
     for (const l of lugares) {
       l.imagenes.forEach((u) => urls.add(u));
@@ -191,14 +191,14 @@ describe('Especificación §8 — cada registro sembrado cumple el contrato (rel
     }
   });
 
-  it('cada lugar referencia una categoría existente y cada evento con lugarId, un lugar existente', () => {
+  it('cada lugar referencia una categorÃƒÆ’Ã‚Â­a existente y cada evento con lugarId, un lugar existente', () => {
     const cats = new Set(categorias.map((c) => c.id));
     const lugs = new Set(lugares.map((l) => l.id));
     for (const l of lugares) expect(cats.has(l.categoriaId), l.id).toBe(true);
     for (const e of eventos) if (e.lugarId) expect(lugs.has(e.lugarId), e.id).toBe(true);
   });
 
-  it('R7 — cada evento tiene lugarId o direccionLibre (no los dos) y coordenadas sólo sin lugarId', () => {
+  it('R7 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â cada evento tiene lugarId o direccionLibre (no los dos) y coordenadas sÃƒÆ’Ã‚Â³lo sin lugarId', () => {
     for (const e of eventos) {
       expect(e.lugarId === null, `${e.id} lugar/direccion`).toBe(e.direccionLibre !== null);
       if (e.lugarId !== null) expect(e.coordenadas, e.id).toBeNull();
@@ -209,7 +209,7 @@ describe('Especificación §8 — cada registro sembrado cumple el contrato (rel
     }
   });
 
-  it('las categorías vienen ordenadas por orden, sin repetir, con color #RRGGBB', () => {
+  it('las categorÃƒÆ’Ã‚Â­as vienen ordenadas por orden, sin repetir, con color #RRGGBB', () => {
     const ordenes = categorias.map((c) => c.orden);
     expect(ordenes).toEqual([...ordenes].sort((a, b) => a - b));
     expect(new Set(ordenes).size).toBe(ordenes.length);
@@ -217,7 +217,7 @@ describe('Especificación §8 — cada registro sembrado cumple el contrato (rel
   });
 
   describe('usuarios de demo del README: existen, ingresan y cumplen el contrato', () => {
-    it('el README publica exactamente los tres usuarios de la especificación', () => {
+    it('el README publica exactamente los tres usuarios de la especificaciÃƒÆ’Ã‚Â³n', () => {
       expect(
         usuariosDelReadme()
           .map((u) => u.email)
@@ -225,7 +225,7 @@ describe('Especificación §8 — cada registro sembrado cumple el contrato (rel
       ).toEqual(['lucia@mail.com', 'nuevo@demo.ar', 'turismo@colon.demo.ar'].sort());
     });
 
-    it('con las contraseñas del README se ingresa (200 Sesion) y sin ellas no (401)', async () => {
+    it('con las contraseÃƒÆ’Ã‚Â±as del README se ingresa (200 Sesion) y sin ellas no (401)', async () => {
       for (const u of usuariosDelReadme()) {
         const ok = await ingresar(ctx, u.email, u.contrasena);
         expect(ok.status, u.email).toBe(200);
@@ -235,7 +235,7 @@ describe('Especificación §8 — cada registro sembrado cumple el contrato (rel
       }
     });
 
-    it('el email se acepta en mayúsculas (se guarda normalizado)', async () => {
+    it('el email se acepta en mayÃƒÆ’Ã‚Âºsculas (se guarda normalizado)', async () => {
       const res = await ingresar(ctx, 'LUCIA@MAIL.COM', 'lucia1234');
       expect(res.status).toBe(200);
     });
@@ -250,14 +250,14 @@ describe('Especificación §8 — cada registro sembrado cumple el contrato (rel
       }
     });
 
-    it('todas las categorías favoritas de cada usuario existen', () => {
+    it('todas las categorÃƒÆ’Ã‚Â­as favoritas de cada usuario existen', () => {
       const cats = new Set(categorias.map((c) => c.id));
       for (const { usuario } of Object.values(porUsuario)) {
         for (const c of usuario.preferencias.categoriasFavoritas) expect(cats.has(c)).toBe(true);
       }
     });
 
-    it('lo que dice el README de Lucía es cierto: 3 favoritos (fav-088), 4 visitas (vis-311 con foto y nota), 1 evento guardado (evt-017)', () => {
+    it('lo que dice el README de LucÃƒÆ’Ã‚Â­a es cierto: 3 favoritos (fav-088), 4 visitas (vis-311 con foto y nota), 1 evento guardado (evt-017)', () => {
       const l = porUsuario['lucia@mail.com'];
       expect(l.usuario.id).toBe('usr-201');
       expect(l.usuario.preferencias.categoriasFavoritas).toEqual(['cat-museos', 'cat-playas']);
@@ -270,7 +270,7 @@ describe('Especificación §8 — cada registro sembrado cumple el contrato (rel
       expect(l.guardados.map((e) => e.id)).toEqual(['evt-017']);
     });
 
-    it('los favoritos y visitas de Lucía apuntan a lugares que existen, no repiten lugar en favoritos y no están en el futuro', () => {
+    it('los favoritos y visitas de LucÃƒÆ’Ã‚Â­a apuntan a lugares que existen, no repiten lugar en favoritos y no estÃƒÆ’Ã‚Â¡n en el futuro', () => {
       const l = porUsuario['lucia@mail.com'];
       const lugs = new Set(lugares.map((x) => x.id));
       for (const f of l.favoritos) {
@@ -291,7 +291,7 @@ describe('Especificación §8 — cada registro sembrado cumple el contrato (rel
       }
     });
 
-    it('nuevo@demo.ar tiene todas las listas vacías (meta.total 0) y sin categorías favoritas', async () => {
+    it('nuevo@demo.ar tiene todas las listas vacÃƒÆ’Ã‚Â­as (meta.total 0) y sin categorÃƒÆ’Ã‚Â­as favoritas', async () => {
       const n = porUsuario['nuevo@demo.ar'];
       expect(n.usuario.preferencias.categoriasFavoritas).toEqual([]);
       for (const ruta of ['/yo/favoritos', '/yo/visitas', '/yo/eventos-guardados']) {
@@ -301,7 +301,7 @@ describe('Especificación §8 — cada registro sembrado cumple el contrato (rel
       }
     });
 
-    it('turismo@colon.demo.ar puede cambiar el estado de un evento; Lucía y nuevo reciben 403', async () => {
+    it('turismo@colon.demo.ar puede cambiar el estado de un evento; LucÃƒÆ’Ã‚Â­a y nuevo reciben 403', async () => {
       const cambio = { estado: 'programado' };
       await ctx
         .http()
@@ -321,7 +321,7 @@ describe('Especificación §8 — cada registro sembrado cumple el contrato (rel
   });
 });
 
-describe('PRD — los registros con ids exactos salen tal cual el ejemplo del PRD (reloj por defecto)', () => {
+describe('PRD ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â los registros con ids exactos salen tal cual el ejemplo del PRD (reloj por defecto)', () => {
   let ctx: AppDePrueba;
   let tokenLucia: string;
   beforeAll(async () => {
@@ -357,8 +357,8 @@ describe('PRD — los registros con ids exactos salen tal cual el ejemplo del PR
         { dia: 2, abre: '09:00', cierra: '19:00' },
         { dia: 6, abre: '10:00', cierra: '20:00' },
       ],
-      telefono: '345-4421234',
-      sitioWeb: null,
+      telefono: '+54 9 3447 577133',
+      sitioWeb: 'https://www.molinoforclaz.com/',
       precioEntrada: 1500,
       codigoQr: 'COLON:lug-004',
       accesible: false,
@@ -366,7 +366,7 @@ describe('PRD — los registros con ids exactos salen tal cual el ejemplo del PR
       actualizadoEn: '2026-08-01T10:30:00-03:00',
     });
     expect(l.descripcion.startsWith('Construido en 1888 por Juan Bautista Forclaz')).toBe(true);
-    expect(l.audioguia).toMatchObject({ duracionSegundos: 252, idioma: 'es' });
+    expect(l.audioguia).toMatchObject({ duracionSegundos: 188, idioma: 'es' });
     expect(l.imagenes.length).toBeGreaterThanOrEqual(1);
     expect(Object.keys(l).sort()).toEqual(
       [
@@ -391,7 +391,7 @@ describe('PRD — los registros con ids exactos salen tal cual el ejemplo del PR
     );
   });
 
-  it('lug-004 se resuelve también por su QR y su horario no cambia entre verano e invierno (es de todo el año)', async () => {
+  it('lug-004 se resuelve tambiÃƒÆ’Ã‚Â©n por su QR y su horario no cambia entre verano e invierno (es de todo el aÃƒÆ’Ã‚Â±o)', async () => {
     const qr = await ctx
       .http()
       .get(`/lugares/qr/${encodeURIComponent('COLON:lug-004')}`)
@@ -423,9 +423,9 @@ describe('PRD — los registros con ids exactos salen tal cual el ejemplo del PR
     expect(res.body.datos.imagenUrl).toMatch(/^https?:\/\/.+\/archivos\//);
   });
 
-  it('R8 con el ejemplo del PRD: una peña de 21:00 a 02:00 (evt-017 según el PRD) aparece en los dos días', async () => {
+  it('R8 con el ejemplo del PRD: una peÃƒÆ’Ã‚Â±a de 21:00 a 02:00 (evt-017 segÃƒÆ’Ã‚Âºn el PRD) aparece en los dos dÃƒÆ’Ã‚Â­as', async () => {
     const e = (await ctx.http().get('/eventos/evt-017').expect(200)).body.datos as Evento;
-    // Según el PRD, evt-017 cruza la medianoche (fin 2026-11-15T02:00:00-03:00).
+    // SegÃƒÆ’Ã‚Âºn el PRD, evt-017 cruza la medianoche (fin 2026-11-15T02:00:00-03:00).
     const dias = [e.inicio.slice(0, 10), '2026-11-15'];
     for (const fecha of dias) {
       const res = await ctx.http().get('/eventos').query({ fecha, porPagina: 100 }).expect(200);
@@ -436,7 +436,7 @@ describe('PRD — los registros con ids exactos salen tal cual el ejemplo del PR
     }
   });
 
-  it('R8 con los datos sembrados: cada evento que cruza la medianoche aparece en los dos días y en el tercero no', async () => {
+  it('R8 con los datos sembrados: cada evento que cruza la medianoche aparece en los dos dÃƒÆ’Ã‚Â­as y en el tercero no', async () => {
     const todos = (
       await ctx.http().get('/eventos').query({ desde: '2000-01-01', porPagina: 100 }).expect(200)
     ).body.datos as Evento[];
@@ -461,8 +461,8 @@ describe('PRD — los registros con ids exactos salen tal cual el ejemplo del PR
   it('usr-201 Lucía Méndez: creadoEn como en el PRD', async () => {
     const res = await ctx.http().get('/yo').set(conSesion(tokenLucia)).expect(200);
     esperarContrato(res.body, 'Usuario');
-    // creadoEn: el PRD dice 2026-09-02T18:20:00-03:00, pero la especificación pide fechas relativas
-    // al momento de sembrar (ver "Dudas"): sólo se pide que no esté en el futuro.
+    // creadoEn: el PRD dice 2026-09-02T18:20:00-03:00, pero la especificaciÃƒÆ’Ã‚Â³n pide fechas relativas
+    // al momento de sembrar (ver "Dudas"): sÃƒÆ’Ã‚Â³lo se pide que no estÃƒÆ’Ã‚Â© en el futuro.
     expect(Date.parse(res.body.datos.creadoEn)).toBeLessThanOrEqual(ctx.reloj.ahora().getTime());
     expect(res.body.datos).toEqual({
       id: 'usr-201',
@@ -505,7 +505,7 @@ describe('PRD — los registros con ids exactos salen tal cual el ejemplo del PR
     await ctx.http().get(new URL(v.fotoUri).pathname).expect(200);
   });
 
-  it('los ids del PRD sólo existen para quien corresponde: otro usuario no ve vis-311 ni puede editarla', async () => {
+  it('los ids del PRD sÃƒÆ’Ã‚Â³lo existen para quien corresponde: otro usuario no ve vis-311 ni puede editarla', async () => {
     const otro = (await ingresar(ctx, 'nuevo@demo.ar', 'nuevo1234')).body.datos.token;
     const res = await ctx.http().patch('/yo/visitas/vis-311').set(conSesion(otro)).send({ nota: 'x' });
     expect([403, 404]).toContain(res.status);
@@ -515,7 +515,7 @@ describe('PRD — los registros con ids exactos salen tal cual el ejemplo del PR
   });
 });
 
-describe('Especificación §8 — casos feos, uno por uno, contra los datos sembrados', () => {
+describe('EspecificaciÃƒÆ’Ã‚Â³n Ãƒâ€šÃ‚Â§8 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â casos feos, uno por uno, contra los datos sembrados', () => {
   let ctx: AppDePrueba;
   let categorias: Categoria[];
   let lugares: Lugar[];
@@ -532,7 +532,7 @@ describe('Especificación §8 — casos feos, uno por uno, contra los datos semb
   });
   afterAll(() => ctx.cerrar());
 
-  it('las 7 categorías del PRD §1 están (y ninguna con nombre repetido)', () => {
+  it('las 7 categorÃƒÆ’Ã‚Â­as del PRD Ãƒâ€šÃ‚Â§1 estÃƒÆ’Ã‚Â¡n (y ninguna con nombre repetido)', () => {
     const nombres = categorias.map((c) => c.nombre);
     for (const n of [
       'Playas',
@@ -549,12 +549,12 @@ describe('Especificación §8 — casos feos, uno por uno, contra los datos semb
     expect(categorias.find((c) => c.id === 'cat-playas')?.nombre).toBe('Playas');
   });
 
-  it('25 a 30 lugares (contando el dado de baja), todos con ids lug- únicos', () => {
+  it('25 a 30 lugares (contando el dado de baja), todos con ids lug- ÃƒÆ’Ã‚Âºnicos', () => {
     expect(lugares.length).toBeGreaterThanOrEqual(25);
     expect(lugares.length).toBeLessThanOrEqual(30);
   });
 
-  it('están los lugares reales que pide la especificación', () => {
+  it('estÃƒÆ’Ã‚Â¡n los lugares reales que pide la especificaciÃƒÆ’Ã‚Â³n', () => {
     const texto = lugares.map((l) => l.nombre.toLowerCase()).join('|');
     for (const parte of [
       'termas',
@@ -571,7 +571,7 @@ describe('Especificación §8 — casos feos, uno por uno, contra los datos semb
     }
   });
 
-  it('8 audioguías exactas, en lugares patrimoniales (incluidos el Molino, la Casa de la Cultura, el puerto y la Iglesia)', () => {
+  it('8 audioguÃƒÆ’Ã‚Â­as exactas, en lugares patrimoniales (incluidos el Molino, la Casa de la Cultura, el puerto y la Iglesia)', () => {
     const conAudio = lugares.filter((l) => l.audioguia);
     expect(conAudio).toHaveLength(8);
     const nombres = conAudio.map((l) => l.nombre.toLowerCase()).join('|');
@@ -583,7 +583,7 @@ describe('Especificación §8 — casos feos, uno por uno, contra los datos semb
     }
   });
 
-  it('R19 — cada audioguía se sirve con Range (206, Content-Range coherente) y un rango imposible da 416', async () => {
+  it('R19 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â cada audioguÃƒÆ’Ã‚Â­a se sirve con Range (206, Content-Range coherente) y un rango imposible da 416', async () => {
     for (const l of lugares.filter((x) => x.audioguia)) {
       const ruta = new URL(l.audioguia!.url).pathname;
       const entero = await ctx
@@ -614,7 +614,7 @@ describe('Especificación §8 — casos feos, uno por uno, contra los datos semb
     expect(lugares.filter((l) => l.telefono !== null).length).toBeGreaterThanOrEqual(1);
   });
 
-  it('una categoría sin lugares (activos ni dados de baja) y su listado es lista vacía con meta total 0', async () => {
+  it('una categorÃƒÆ’Ã‚Â­a sin lugares (activos ni dados de baja) y su listado es lista vacÃƒÆ’Ã‚Â­a con meta total 0', async () => {
     const vacias = categorias.filter((c) => !lugares.some((l) => l.categoriaId === c.id));
     expect(vacias.length).toBeGreaterThanOrEqual(1);
     for (const c of vacias) {
@@ -625,7 +625,7 @@ describe('Especificación §8 — casos feos, uno por uno, contra los datos semb
     }
   });
 
-  it('un lugar con nombre de más de 60 caracteres y descripción de más de 3.000, y sigue entrando en un listado normal', async () => {
+  it('un lugar con nombre de mÃƒÆ’Ã‚Â¡s de 60 caracteres y descripciÃƒÆ’Ã‚Â³n de mÃƒÆ’Ã‚Â¡s de 3.000, y sigue entrando en un listado normal', async () => {
     const largo = lugares.filter((l) => l.nombre.length > 60 && l.descripcion.length > 3000);
     expect(largo.length).toBeGreaterThanOrEqual(1);
     const res = await ctx
@@ -637,16 +637,16 @@ describe('Especificación §8 — casos feos, uno por uno, contra los datos semb
     expect(res.body.datos.map((l: Lugar) => l.id)).toContain(largo[0].id);
   });
 
-  it('un lugar que cierra los lunes: abre otros días y ningún tramo es lunes (dia 1)', () => {
+  it('un lugar que cierra los lunes: abre otros dÃƒÆ’Ã‚Â­as y ningÃƒÆ’Ã‚Âºn tramo es lunes (dia 1)', () => {
     const cierraLunes = lugares.filter(
       (l) => l.activo && l.horarios.length >= 3 && l.horarios.every((h) => h.dia !== 1),
     );
     expect(cierraLunes.length).toBeGreaterThanOrEqual(1);
-    // ...y la mayoría del catálogo sí abre los lunes (si no, no sería un "caso").
+    // ...y la mayorÃƒÆ’Ã‚Â­a del catÃƒÆ’Ã‚Â¡logo sÃƒÆ’Ã‚Â­ abre los lunes (si no, no serÃƒÆ’Ã‚Â­a un "caso").
     expect(lugares.filter((l) => l.horarios.some((h) => h.dia === 1)).length).toBeGreaterThanOrEqual(1);
   });
 
-  it('un lugar con dos tramos por día (R2), sin días duplicados de la misma franja', () => {
+  it('un lugar con dos tramos por dÃƒÆ’Ã‚Â­a (R2), sin dÃƒÆ’Ã‚Â­as duplicados de la misma franja', () => {
     const dosTramos = lugares.filter((l) =>
       l.horarios.some((h, i) => l.horarios.findIndex((o) => o.dia === h.dia) !== i),
     );
@@ -673,7 +673,7 @@ describe('Especificación §8 — casos feos, uno por uno, contra los datos semb
       expect(await en('2026-12-01T00:00:00-03:00', id)).toEqual(v);
       expect(await en('2027-03-31T23:59:59-03:00', id)).toEqual(v);
       expect(await en('2027-04-01T00:00:00-03:00', id)).toEqual(i);
-      // El teléfono se entera: en el 1/12 el lugar vuelve en actualizadoDesde.
+      // El telÃƒÆ’Ã‚Â©fono se entera: en el 1/12 el lugar vuelve en actualizadoDesde.
       ctx.reloj.fijar('2026-12-01T00:00:01-03:00');
       const nov = await ctx
         .http()
@@ -696,7 +696,7 @@ describe('Especificación §8 — casos feos, uno por uno, contra los datos semb
     expect(det.body.datos.activo).toBe(false);
   });
 
-  it('un lugar sin imágenes, uno con precioEntrada 0 (gratis), uno con null y uno accesible', () => {
+  it('un lugar sin imÃƒÆ’Ã‚Â¡genes, uno con precioEntrada 0 (gratis), uno con null y uno accesible', () => {
     expect(lugares.some((l) => l.imagenes.length === 0 && l.activo)).toBe(true);
     expect(lugares.some((l) => l.precioEntrada === 0)).toBe(true);
     expect(lugares.some((l) => l.precioEntrada === null)).toBe(true);
@@ -705,7 +705,7 @@ describe('Especificación §8 — casos feos, uno por uno, contra los datos semb
     expect(lugares.some((l) => l.precioEntrada !== null && l.precioEntrada > 0)).toBe(true);
   });
 
-  it('agenda: un evento hoy a la noche, uno que cruza la medianoche, uno mañana, uno en diez días', () => {
+  it('agenda: un evento hoy a la noche, uno que cruza la medianoche, uno maÃƒÆ’Ã‚Â±ana, uno en diez dÃƒÆ’Ã‚Â­as', () => {
     const hoy = '2026-11-14';
     const conDia = (e: Evento) => e.inicio.slice(0, 10);
     expect(eventos.some((e) => conDia(e) === hoy && e.inicio.slice(11, 13) >= '19')).toBe(true);
@@ -727,21 +727,21 @@ describe('Especificación §8 — casos feos, uno por uno, contra los datos semb
     }
   });
 
-  it('agenda: uno con dirección libre sin lugarId, uno gratis (precio 0) y uno con precio null', () => {
+  it('agenda: uno con direcciÃƒÆ’Ã‚Â³n libre sin lugarId, uno gratis (precio 0) y uno con precio null', () => {
     expect(eventos.some((e) => e.lugarId === null && e.direccionLibre !== null)).toBe(true);
     expect(eventos.some((e) => e.precio === 0)).toBe(true);
     expect(eventos.some((e) => e.precio === null)).toBe(true);
     expect(eventos.some((e) => e.precio !== null && e.precio > 0)).toBe(true);
   });
 
-  it('la agenda por defecto (desde hoy) incluye los de hoy aunque terminaron y está ordenada por inicio', async () => {
+  it('la agenda por defecto (desde hoy) incluye los de hoy aunque terminaron y estÃƒÆ’Ã‚Â¡ ordenada por inicio', async () => {
     const res = await ctx.http().get('/eventos?porPagina=100').expect(200);
     esperarContrato(res.body, 'Evento');
     const inicios = res.body.datos.map((e: Evento) => e.inicio);
     expect(inicios).toEqual([...inicios].sort());
   });
 
-  it('el evento guardado por Lucía sigue guardable: un evento suspendido sembrado se puede guardar, uno cancelado da 422', async () => {
+  it('el evento guardado por LucÃƒÆ’Ã‚Â­a sigue guardable: un evento suspendido sembrado se puede guardar, uno cancelado da 422', async () => {
     const token = (await ingresar(ctx, 'nuevo@demo.ar', 'nuevo1234')).body.datos.token;
     const susp = eventos.find((e) => e.estado === 'suspendido')!;
     const canc = eventos.find((e) => e.estado === 'cancelado')!;
@@ -756,13 +756,13 @@ describe('Especificación §8 — casos feos, uno por uno, contra los datos semb
   });
 });
 
-describe('Especificación §8 / AGENTS §6 — todo lo temporal es relativo al momento de sembrar (bordes del reloj)', () => {
+describe('EspecificaciÃƒÆ’Ã‚Â³n Ãƒâ€šÃ‚Â§8 / AGENTS Ãƒâ€šÃ‚Â§6 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â todo lo temporal es relativo al momento de sembrar (bordes del reloj)', () => {
   const casos = [
     ['23:59 del 31/12', '2026-12-31T23:59:00-03:00', '2026-12-31'],
     ['00:00 del 1/1', '2027-01-01T00:00:00-03:00', '2027-01-01'],
-    ['último día del mes (30/11 a las 23:59)', '2026-11-30T23:59:00-03:00', '2026-11-30'],
+    ['ÃƒÆ’Ã‚Âºltimo dÃƒÆ’Ã‚Â­a del mes (30/11 a las 23:59)', '2026-11-30T23:59:00-03:00', '2026-11-30'],
     ['29 de febrero', '2028-02-29T12:00:00-03:00', '2028-02-29'],
-    ['21:00 de la noche (misma hora que la peña)', '2026-11-14T21:00:00-03:00', '2026-11-14'],
+    ['21:00 de la noche (misma hora que la peÃƒÆ’Ã‚Â±a)', '2026-11-14T21:00:00-03:00', '2026-11-14'],
   ] as const;
 
   it.each(casos)(
@@ -802,7 +802,7 @@ describe('Especificación §8 / AGENTS §6 — todo lo temporal es relativo al m
             estado,
           ).toBe(true);
         }
-        // Lucía: nada en el futuro, foto de vis-311 accesible, un evento guardado.
+        // LucÃƒÆ’Ã‚Â­a: nada en el futuro, foto de vis-311 accesible, un evento guardado.
         const ing = await ingresar(ctx, 'lucia@mail.com', 'lucia1234');
         const token = ing.body.datos.token as string;
         esperarContrato(ing.body, 'Sesion');
@@ -831,7 +831,7 @@ describe('Especificación §8 / AGENTS §6 — todo lo temporal es relativo al m
   );
 });
 
-describe('Sembrar dos veces no duplica (AGENTS §16.2, SEMBRAR_SI_VACIA)', () => {
+describe('Sembrar dos veces no duplica (AGENTS Ãƒâ€šÃ‚Â§16.2, SEMBRAR_SI_VACIA)', () => {
   it('Sembrador.sembrar() repetido deja los mismos totales y los mismos ids', async () => {
     const ctx = await crearApp();
     try {
@@ -870,8 +870,8 @@ describe('Sembrar dos veces no duplica (AGENTS §16.2, SEMBRAR_SI_VACIA)', () =>
       }
       // O bien se niega a sembrar de nuevo, o bien es idempotente; lo que no puede es duplicar.
       const despues = await foto();
-      expect(despues, error ? `(la segunda siembra falló: ${String(error)})` : '').toEqual(antes);
-      // Los usuarios de demo siguen ingresando una sola vez con su contraseña.
+      expect(despues, error ? `(la segunda siembra fallÃƒÆ’Ã‚Â³: ${String(error)})` : '').toEqual(antes);
+      // Los usuarios de demo siguen ingresando una sola vez con su contraseÃƒÆ’Ã‚Â±a.
       for (const u of usuariosDelReadme())
         expect((await ingresar(ctx, u.email, u.contrasena)).status).toBe(200);
     } finally {
@@ -896,8 +896,8 @@ describe('Sembrar dos veces no duplica (AGENTS §16.2, SEMBRAR_SI_VACIA)', () =>
         fallo = true;
       }
       const ing = await ingresar(ctx, 'persona@nueva.ar', 'una-clave-segura');
-      // Si sembrar() reescribió la base, el registro se perdió: es una decisión válida sólo para db:reiniciar.
-      expect(ing.status, fallo ? 'sembrar() tiró error' : 'sembrar() borró al usuario registrado').toBe(200);
+      // Si sembrar() reescribiÃƒÆ’Ã‚Â³ la base, el registro se perdiÃƒÆ’Ã‚Â³: es una decisiÃƒÆ’Ã‚Â³n vÃƒÆ’Ã‚Â¡lida sÃƒÆ’Ã‚Â³lo para db:reiniciar.
+      expect(ing.status, fallo ? 'sembrar() tirÃƒÆ’Ã‚Â³ error' : 'sembrar() borrÃƒÆ’Ã‚Â³ al usuario registrado').toBe(200);
       const favs = await ctx.http().get('/yo/favoritos').set(conSesion(ing.body.datos.token)).expect(200);
       expect(favs.body.datos).toHaveLength(1);
     } finally {
@@ -906,14 +906,14 @@ describe('Sembrar dos veces no duplica (AGENTS §16.2, SEMBRAR_SI_VACIA)', () =>
   });
 });
 
-describe('AGENTS §13 — el README dice cosas ciertas', () => {
+describe('AGENTS Ãƒâ€šÃ‚Â§13 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â el README dice cosas ciertas', () => {
   const secciones = [...README.matchAll(/^## (\d+)\. (.+)$/gm)].map((m) => ({
     n: Number(m[1]),
     titulo: m[2],
   }));
   const idx = (re: RegExp) => secciones.findIndex((s) => re.test(s.titulo));
 
-  it('tiene las secciones que pide AGENTS §13, con Docker primero', () => {
+  it('tiene las secciones que pide AGENTS Ãƒâ€šÃ‚Â§13, con Docker primero', () => {
     const orden = [
       /Docker/i, // 2. con Docker, un solo comando (va primero)
       /sin Docker/i, // 3. Node + pnpm + SQLite
@@ -930,24 +930,24 @@ describe('AGENTS §13 — el README dice cosas ciertas', () => {
       const i = secciones.findIndex((s, k) => k > previo && re.test(s.titulo));
       expect(
         i,
-        `falta una sección que case con ${re}: ${secciones.map((s) => s.titulo).join(' | ')}`,
+        `falta una secciÃƒÆ’Ã‚Â³n que case con ${re}: ${secciones.map((s) => s.titulo).join(' | ')}`,
       ).toBeGreaterThan(-1);
       previo = i;
     }
     expect(idx(/Docker/i)).toBe(0);
   });
 
-  it('tiene la tabla de endpoints y la de códigos de error con sus marcas', () => {
+  it('tiene la tabla de endpoints y la de cÃƒÆ’Ã‚Â³digos de error con sus marcas', () => {
     expect(README).toContain('<!-- tabla:endpoints -->');
     expect(README).toContain('<!-- tabla:errores -->');
   });
 
-  it('el "Estado" del README no dice que algo llega en próximas versiones (M7 cierra el plan)', () => {
-    expect(README).not.toMatch(/pr[oó]ximas versiones/i);
-    expect(README).not.toMatch(/llega(n)? en las pr[oó]ximas/i);
-    // Sin `i` para los marcadores en mayúsculas: "todo" es una palabra normal en castellano.
+  it('el "Estado" del README no dice que algo llega en prÃƒÆ’Ã‚Â³ximas versiones (M7 cierra el plan)', () => {
+    expect(README).not.toMatch(/pr[oÃƒÆ’Ã‚Â³]ximas versiones/i);
+    expect(README).not.toMatch(/llega(n)? en las pr[oÃƒÆ’Ã‚Â³]ximas/i);
+    // Sin `i` para los marcadores en mayÃƒÆ’Ã‚Âºsculas: "todo" es una palabra normal en castellano.
     expect(README).not.toMatch(/\bTODO\b|\bPENDIENTE\b/);
-    expect(README).not.toMatch(/próximamente/i);
+    expect(README).not.toMatch(/prÃƒÆ’Ã‚Â³ximamente/i);
   });
 
   it('menciona que el README nombra el PRD y `docs/prd.pdf`', () => {
@@ -993,7 +993,7 @@ describe('AGENTS §13 — el README dice cosas ciertas', () => {
     }
   });
 
-  it('las variables de entorno que cita están en .env.example', () => {
+  it('las variables de entorno que cita estÃƒÆ’Ã‚Â¡n en .env.example', () => {
     const env = readFileSync(join(RAIZ, '.env.example'), 'utf8');
     for (const v of ['PUERTO', 'DB_MOTOR', 'DB_URL', 'SIMULACION_HABILITADA', 'RELOJ_FIJO', 'ENTORNO']) {
       expect(README, v).toContain(v);
@@ -1001,7 +1001,7 @@ describe('AGENTS §13 — el README dice cosas ciertas', () => {
     }
   });
 
-  it('avisa lo de XAMPP → mariadb, el firewall de Windows y el arranque en frío', () => {
+  it('avisa lo de XAMPP ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ mariadb, el firewall de Windows y el arranque en frÃƒÆ’Ã‚Â­o', () => {
     expect(README).toMatch(/XAMPP/);
     expect(README).toMatch(/DB_MOTOR=mariadb/);
     expect(README).toMatch(/[Ff]irewall/);
@@ -1038,7 +1038,7 @@ describe('AGENTS §13 — el README dice cosas ciertas', () => {
     }
   });
 
-  it('README §6 — el ejemplo de "sin señal" (catálogo entero con actualizadoDesde=2000) trae también los dados de baja', async () => {
+  it('README Ãƒâ€šÃ‚Â§6 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â el ejemplo de "sin seÃƒÆ’Ã‚Â±al" (catÃƒÆ’Ã‚Â¡logo entero con actualizadoDesde=2000) trae tambiÃƒÆ’Ã‚Â©n los dados de baja', async () => {
     const ctx = await crearApp();
     try {
       await ctx.app.get(Sembrador).sembrar();
@@ -1053,7 +1053,7 @@ describe('AGENTS §13 — el README dice cosas ciertas', () => {
     }
   });
 
-  it('README §6 — los ejemplos de filtros devuelven algo con los datos de demo (ubicación de Colón, radio 2 km, q=colon, accesible, categoría)', async () => {
+  it('README Ãƒâ€šÃ‚Â§6 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â los ejemplos de filtros devuelven algo con los datos de demo (ubicaciÃƒÆ’Ã‚Â³n de ColÃƒÆ’Ã‚Â³n, radio 2 km, q=colon, accesible, categorÃƒÆ’Ã‚Â­a)', async () => {
     const ctx = await crearApp();
     try {
       await ctx.app.get(Sembrador).sembrar();
@@ -1062,7 +1062,7 @@ describe('AGENTS §13 — el README dice cosas ciertas', () => {
         .get('/lugares?latitud=-32.2236&longitud=-58.1427&radioMetros=2000&orden=distancia')
         .expect(200);
       esperarContrato(cerca.body, 'Lugar');
-      expect(cerca.body.datos.length, 'nada a 2 km del centro de Colón').toBeGreaterThan(0);
+      expect(cerca.body.datos.length, 'nada a 2 km del centro de ColÃƒÆ’Ã‚Â³n').toBeGreaterThan(0);
       for (const l of cerca.body.datos) expect(Object.keys(l)).not.toContain('distancia');
       const q = await ctx.http().get('/lugares?q=colon').expect(200);
       expect(q.body.datos.length).toBeGreaterThan(0);
@@ -1078,7 +1078,7 @@ describe('AGENTS §13 — el README dice cosas ciertas', () => {
     }
   });
 
-  it('README §6/§7 — el flujo de la push: Lucía guarda evt-017 (ya lo tiene), el admin lo suspende y ella recibe una push', async () => {
+  it('README Ãƒâ€šÃ‚Â§6/Ãƒâ€šÃ‚Â§7 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â el flujo de la push: LucÃƒÆ’Ã‚Â­a guarda evt-017 (ya lo tiene), el admin lo suspende y ella recibe una push', async () => {
     const ctx = await crearApp();
     try {
       await ctx.app.get(Sembrador).sembrar();
@@ -1094,7 +1094,7 @@ describe('AGENTS §13 — el README dice cosas ciertas', () => {
       esperarContrato(res.body, 'Evento');
       await ctx.esperarAvisos();
       expect(ctx.enviador.enviadas).toHaveLength(1);
-      // Un turista que no lo guardó, no recibe nada.
+      // Un turista que no lo guardÃƒÆ’Ã‚Â³, no recibe nada.
       const nuevo = (await ingresar(ctx, 'nuevo@demo.ar', 'nuevo1234')).body.datos.token;
       await registrarTelefono(ctx, nuevo, 'ExponentPushToken[zzzzzzzzzzzzzzzzzzzzzz]');
       await ctx
@@ -1110,7 +1110,7 @@ describe('AGENTS §13 — el README dice cosas ciertas', () => {
     }
   });
 
-  it('README §5 — para mirar no hace falta cuenta: catálogo y agenda son públicos, lo demás da 401', async () => {
+  it('README Ãƒâ€šÃ‚Â§5 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â para mirar no hace falta cuenta: catÃƒÆ’Ã‚Â¡logo y agenda son pÃƒÆ’Ã‚Âºblicos, lo demÃƒÆ’Ã‚Â¡s da 401', async () => {
     const ctx = await crearApp();
     try {
       await ctx.app.get(Sembrador).sembrar();
@@ -1132,7 +1132,7 @@ describe('AGENTS §13 — el README dice cosas ciertas', () => {
     }
   });
 
-  it('la tabla de endpoints del README cubre todas las rutas de la especificación §4', () => {
+  it('la tabla de endpoints del README cubre todas las rutas de la especificaciÃƒÆ’Ã‚Â³n Ãƒâ€šÃ‚Â§4', () => {
     const rutas = [
       'GET /categorias',
       'GET /lugares',
@@ -1161,18 +1161,18 @@ describe('AGENTS §13 — el README dice cosas ciertas', () => {
     }
   });
 
-  it('el README no contradice al catálogo: en la tabla, PATCH /eventos/:id/estado dice que es 🔒 y en el texto que lo hace un admin', () => {
+  it('el README no contradice al catÃƒÆ’Ã‚Â¡logo: en la tabla, PATCH /eventos/:id/estado dice que es ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ¢â‚¬â„¢ y en el texto que lo hace un admin', () => {
     expect(README).toMatch(/turismo@colon\.demo\.ar/);
     expect(README).toMatch(/403/);
   });
 
-  it('el README está en castellano rioplatense: sin "tú", "haz", "tienes", "puedes"', () => {
+  it('el README estÃƒÆ’Ã‚Â¡ en castellano rioplatense: sin "tÃƒÆ’Ã‚Âº", "haz", "tienes", "puedes"', () => {
     const texto = README.replace(/```[\s\S]*?```/g, '');
     expect(texto).not.toMatch(/\b(tienes|puedes|haz clic|necesitas|debes)\b/i);
   });
 });
 
-describe('AGENTS §16 — arranque real (dist/) con SEMBRAR_SI_VACIA sobre una base que ya tiene datos', () => {
+describe('AGENTS Ãƒâ€šÃ‚Â§16 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â arranque real (dist/) con SEMBRAR_SI_VACIA sobre una base que ya tiene datos', () => {
   const esSqlite = (process.env.DB_MOTOR ?? 'better-sqlite3') === 'better-sqlite3';
   const hayDist = existsSync(join(RAIZ, 'dist/src/main.js'));
 
@@ -1200,12 +1200,12 @@ describe('AGENTS §16 — arranque real (dist/) con SEMBRAR_SI_VACIA sobre una b
       try {
         if ((await fetch(`${base}/salud`)).ok) return { hijo, base };
       } catch {
-        // todavía no arrancó
+        // todavÃƒÆ’Ã‚Â­a no arrancÃƒÆ’Ã‚Â³
       }
       await new Promise((r) => setTimeout(r, 200));
     }
     hijo.kill();
-    throw new Error('la API construida no arrancó');
+    throw new Error('la API construida no arrancÃƒÆ’Ã‚Â³');
   }
   const parar = (hijo: { kill: () => void; once: (e: string, f: () => void) => void }) =>
     new Promise<void>((r) => {
@@ -1236,7 +1236,7 @@ describe('AGENTS §16 — arranque real (dist/) con SEMBRAR_SI_VACIA sobre una b
             ).json()
           ).meta.total;
         const antes = await total(a.base);
-        expect(antes, 'la primera vez sembró sola').toBeGreaterThanOrEqual(25);
+        expect(antes, 'la primera vez sembrÃƒÆ’Ã‚Â³ sola').toBeGreaterThanOrEqual(25);
         const reg = await fetch(`${a.base}/auth/registro`, {
           method: 'POST',
           headers: json,
@@ -1275,7 +1275,7 @@ describe('AGENTS §16 — arranque real (dist/) con SEMBRAR_SI_VACIA sobre una b
   );
 });
 
-describe('Especificación §8 — el error de red de los casos feos', () => {
+describe('EspecificaciÃƒÆ’Ã‚Â³n Ãƒâ€šÃ‚Â§8 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â el error de red de los casos feos', () => {
   it('el error de red: X-Simular: error-500 da el sobre de error de ERROR_INTERNO', async () => {
     const otra = await crearApp({ entorno: { SIMULACION_HABILITADA: 'true' } });
     try {

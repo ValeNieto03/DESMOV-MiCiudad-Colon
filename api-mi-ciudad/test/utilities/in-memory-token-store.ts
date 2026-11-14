@@ -1,12 +1,22 @@
 import type { AlmacenTokensPush, PlataformaPush } from '../../src/common/notifications/ports.js';
 
-/** Doble del almacén de tokens para tests: en memoria, un token pertenece a un solo usuario. */
 export class AlmacenTokensMemoria implements AlmacenTokensPush {
-  private readonly porToken = new Map<string, { usuarioId: string; plataforma: PlataformaPush }>();
+  private readonly porToken = new Map<
+    string,
+    { usuarioId: string; plataforma: PlataformaPush; creadoEn: Date }
+  >();
 
-  guardar(usuarioId: string, tokenExpo: string, plataforma: PlataformaPush): Promise<{ nuevo: boolean }> {
+  guardar(
+    usuarioId: string,
+    tokenExpo: string,
+    plataforma: PlataformaPush,
+  ): Promise<{ nuevo: boolean }> {
     const nuevo = !this.porToken.has(tokenExpo);
-    this.porToken.set(tokenExpo, { usuarioId, plataforma });
+    this.porToken.set(tokenExpo, {
+      usuarioId,
+      plataforma,
+      creadoEn: new Date(),
+    });
     return Promise.resolve({ nuevo });
   }
 
@@ -17,16 +27,27 @@ export class AlmacenTokensMemoria implements AlmacenTokensPush {
 
   tokensDe(usuarioIds: string[]): Promise<string[]> {
     return Promise.resolve(
-      [...this.porToken].filter(([, v]) => usuarioIds.includes(v.usuarioId)).map(([token]) => token),
+      [...this.porToken]
+        .filter(([, v]) => usuarioIds.includes(v.usuarioId))
+        .map(([token]) => token),
+    );
+  }
+
+  listar(
+    usuarioId: string,
+  ): Promise<Array<{ plataforma: PlataformaPush; creadoEn: Date }>> {
+    return Promise.resolve(
+      [...this.porToken.values()]
+        .filter((dispositivo) => dispositivo.usuarioId === usuarioId)
+        .map(({ plataforma, creadoEn }) => ({ plataforma, creadoEn })),
     );
   }
 
   descartar(tokens: string[]): Promise<void> {
-    tokens.forEach((t) => this.porToken.delete(t));
+    tokens.forEach((token) => this.porToken.delete(token));
     return Promise.resolve();
   }
 
-  /** Para verificar: todos los tokens guardados. */
   todos(): string[] {
     return [...this.porToken.keys()];
   }

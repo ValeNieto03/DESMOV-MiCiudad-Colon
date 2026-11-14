@@ -51,7 +51,13 @@ describe('AGENTS §19.2 — Avisos decide a quién se avisa', () => {
   it('con las piezas sin implementar sigue de largo (no rompe el flujo)', async () => {
     const pendiente = () => Promise.reject(new PendienteDeImplementar('tokens'));
     const avisos = new AvisosServicio(
-      { guardar: pendiente, borrar: pendiente, tokensDe: pendiente, descartar: pendiente },
+      {
+        guardar: pendiente,
+        borrar: pendiente,
+        tokensDe: pendiente,
+        listar: pendiente,
+        descartar: pendiente,
+      },
       { enviar: pendiente },
     );
     avisos.avisar(['usr-1'], aviso);

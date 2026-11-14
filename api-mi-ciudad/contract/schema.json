@@ -98,7 +98,7 @@
     },
     "Dispositivo": {
       "additionalProperties": false,
-      "description": "Respuesta de POST /dispositivos: el teléfono registrado para recibir push.",
+      "description": "Respuesta de POST /dispositivos: el telÃ©fono registrado para recibir push.",
       "properties": {
         "plataforma": {
           "enum": [
@@ -356,7 +356,7 @@
     },
     "Meta": {
       "additionalProperties": false,
-      "description": "Paginación de toda respuesta de lista.",
+      "description": "PaginaciÃ³n de toda respuesta de lista.",
       "properties": {
         "pagina": {
           "type": "number"
@@ -417,7 +417,7 @@
     },
     "PruebaNotificacion": {
       "additionalProperties": false,
-      "description": "Respuesta de POST /dispositivos/prueba: a cuántos teléfonos se mandó la push de prueba.",
+      "description": "Respuesta de POST /dispositivos/prueba: a cuÃ¡ntos telÃ©fonos se mandÃ³ la push de prueba.",
       "properties": {
         "enviadas": {
           "type": "number"
@@ -430,7 +430,7 @@
     },
     "RespuestaError": {
       "additionalProperties": false,
-      "description": "Error: { error: { codigo, mensaje } } — sin otros campos.",
+      "description": "Error: { error: { codigo, mensaje } } â€” sin otros campos.",
       "properties": {
         "error": {
           "additionalProperties": false,
@@ -504,11 +504,19 @@
         },
         "usuario": {
           "$ref": "#/definitions/Usuario"
+        },
+        "rol": {
+          "enum": [
+            "admin",
+            "turista"
+          ],
+          "type": "string"
         }
       },
       "required": [
         "token",
-        "usuario"
+        "usuario",
+        "rol"
       ],
       "type": "object"
     },

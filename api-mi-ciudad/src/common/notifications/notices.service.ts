@@ -1,3 +1,4 @@
+
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   ALMACEN_TOKENS_PUSH,
@@ -13,12 +14,11 @@ export interface Aviso {
   datos: Record<string, string>;
 }
 
-/**
- * Lo único que usa el dominio para mandar push (AGENTS §9 y §19.2). Decide a quién; guardar los
- * tokens y mandar los mensajes lo hacen los puertos. Se llama después de confirmar la transacción
- * y no se espera: un error del almacén o del enviador se loguea y no rompe el pedido.
- * (El interruptor `avisosActivos` no existe en este PRD: especificación D9.)
- */
+export interface ResultadoAviso {
+  aceptado: boolean;
+  tokensConsultados: number;
+}
+
 @Injectable()
 export class AvisosServicio {
   private readonly log = new Logger('Avisos');
@@ -27,27 +27,69 @@ export class AvisosServicio {
   constructor(
     @Inject(ALMACEN_TOKENS_PUSH) private readonly almacen: AlmacenTokensPush,
     @Inject(ENVIADOR_PUSH) private readonly enviador: EnviadorPush,
-  ) {}
+  ) { }
 
-  /** Dispara el envío en segundo plano. */
+  /** Dispara el envío en segundo plano, sin interrumpir la operación original. */
   avisar(usuarioIds: string[], aviso: Aviso): void {
     const ids = [...new Set(usuarioIds)];
     if (ids.length === 0) return;
-    const envio = this.enviar(ids, aviso).finally(() => this.pendientes.delete(envio));
+
+    const envio = this.enviar(ids, aviso)
+      .then(() => undefined)
+      .finally(() => this.pendientes.delete(envio));
+
     this.pendientes.add(envio);
+  }
+
+  /**
+   * Espera el resultado del envío. Se utiliza para procesos que deben reintentar
+   * si Expo no acepta todos los mensajes.
+   */
+  async avisarYEsperar(
+    usuarioIds: string[],
+    aviso: Aviso,
+  ): Promise<ResultadoAviso> {
+    const ids = [...new Set(usuarioIds)];
+    if (ids.length === 0) {
+      return { aceptado: false, tokensConsultados: 0 };
+    }
+
+    const tokens = await this.almacen.tokensDe(ids);
+    if (tokens.length === 0) {
+      return { aceptado: false, tokensConsultados: 0 };
+    }
+
+    const resultado = await this.enviador.enviar([{ tokens, ...aviso }]);
+
+    if (resultado.tokensInvalidos.length > 0) {
+      await this.almacen.descartar(resultado.tokensInvalidos);
+    }
+
+    return {
+      aceptado: resultado.aceptado,
+      tokensConsultados: tokens.length,
+    };
   }
 
   private async enviar(usuarioIds: string[], aviso: Aviso): Promise<void> {
     try {
-      const tokens = await this.almacen.tokensDe(usuarioIds);
-      if (tokens.length === 0) return;
-      const { tokensInvalidos } = await this.enviador.enviar([{ tokens, ...aviso }]);
-      if (tokensInvalidos.length > 0) await this.almacen.descartar(tokensInvalidos);
+      const resultado = await this.avisarYEsperar(usuarioIds, aviso);
+
+      if (!resultado.aceptado) {
+        this.log.warn(
+          `Push no aceptada: ${aviso.titulo} → ${usuarioIds.length} usuarios.`,
+        );
+      }
     } catch (error) {
       if (error instanceof PendienteDeImplementar) {
-        this.log.log(`Push pendiente de implementar: ${aviso.titulo} → ${usuarioIds.length} usuarios`);
+        this.log.log(
+          `Push pendiente de implementar: ${aviso.titulo} → ${usuarioIds.length} usuarios`,
+        );
       } else {
-        this.log.warn(`No se pudo mandar la push: ${(error as Error).message}`);
+        this.log.warn(
+          `No se pudo mandar la push: ${error instanceof Error ? error.message : String(error)
+          }`,
+        );
       }
     }
   }

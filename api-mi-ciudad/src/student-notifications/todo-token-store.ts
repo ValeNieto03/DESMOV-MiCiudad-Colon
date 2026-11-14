@@ -68,7 +68,7 @@ export class AlmacenTokensPorHacer implements AlmacenTokensPush {
     await this.repo.delete({ tokenExpo });
   }
 
-  async tokensDe(usuarioIds: string[]): Promise<string[]> {
+    async tokensDe(usuarioIds: string[]): Promise<string[]> {
     const ids = [...new Set(usuarioIds)];
 
     if (ids.length === 0) {
@@ -81,6 +81,25 @@ export class AlmacenTokensPorHacer implements AlmacenTokensPush {
     });
 
     return dispositivos.map((dispositivo) => dispositivo.tokenExpo);
+  }
+
+  // AGREGAR ESTE MÉTODO
+  async listar(
+    usuarioId: string,
+  ): Promise<Array<{ plataforma: PlataformaPush; creadoEn: Date }>> {
+    const dispositivos = await this.repo.find({
+      select: {
+        plataforma: true,
+        creadoEn: true,
+      },
+      where: { usuarioId },
+      order: { creadoEn: 'DESC' },
+    });
+
+    return dispositivos.map((dispositivo) => ({
+      plataforma: dispositivo.plataforma,
+      creadoEn: dispositivo.creadoEn,
+    }));
   }
 
   async descartar(tokens: string[]): Promise<void> {

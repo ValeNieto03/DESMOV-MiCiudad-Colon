@@ -4,6 +4,10 @@ import { File } from 'expo-file-system';
 
 const API_BASE_URL = 'http://192.168.1.100:3000';
 
+export function prepararUrlAudioguia(clave: string): string {
+  return `${API_BASE_URL}/archivos/${clave}`;
+}
+
 export type LugarAPI = {
   id: string;
   nombre: string;
@@ -60,6 +64,7 @@ type RespuestaAPI<T> = {
  * Cuando requiereAutenticacion es true,
  * agrega el JWT guardado en SecureStore.
  */
+
 export async function consultarAPI<T>(
   ruta: string,
   opciones: RequestInit = {},
@@ -83,13 +88,28 @@ export async function consultarAPI<T>(
 
   let respuesta: Response;
 
+  const controlador = new AbortController();
+
+  // Evita que la aplicación quede esperando indefinidamente.
+  const temporizador = setTimeout(() => {
+    controlador.abort();
+  }, 10000);
+
   try {
-    respuesta = await fetch(`${API_BASE_URL}${ruta}`, {
+    console.log('API: iniciando solicitud', `${API_BASE_URL}${ruta}`);
+
+    respuesta = await expoFetch(`${API_BASE_URL}${ruta}`, {
       ...opciones,
       headers,
+      signal: controlador.signal,
     });
-  } catch {
+
+    console.log('API: respuesta recibida', respuesta.status);
+  } catch (error) {
+    console.error('API: ERROR REAL DE CONEXIÓN:', error);
     throw new Error('API_NO_DISPONIBLE');
+  } finally {
+    clearTimeout(temporizador);
   }
 
   // Algunas operaciones, como DELETE, responden 204
@@ -131,6 +151,7 @@ export async function consultarAPI<T>(
 
   return datos.datos;
 }
+
 
 export async function comprobarConexionAPI() {
   const datos = await consultarAPI<{

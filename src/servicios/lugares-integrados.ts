@@ -8,6 +8,8 @@ import {
 } from './api';
 
 import type { LugarAPI } from './api';
+import { obtenerAudioLocal } from './audioguias-locales';
+import { Directory, File, Paths } from 'expo-file-system';
 
 type CategoriaAPI = {
   id: string;
@@ -18,6 +20,85 @@ import {
   guardarLugaresLocales,
   obtenerLugaresLocales,
 } from './visitas';
+
+// --------------------------------------------------
+// DESCARGA Y ALMACENAMIENTO LOCAL DE IMÁGENES
+// --------------------------------------------------
+
+function generarHashImagen(url: string): string {
+  let hash = 2166136261;
+
+  for (let i = 0; i < url.length; i++) {
+    hash ^= url.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return (hash >>> 0).toString(16);
+}
+
+async function descargarImagenLugar(
+  lugar: Place,
+  directorio: Directory,
+): Promise<Place> {
+  try {
+    const imagen = lugar.imagen;
+
+    // Las imágenes incluidas en la aplicación mediante require()
+    // no necesitan descargarse.
+    if (
+      !imagen ||
+      typeof imagen !== 'object' ||
+      typeof imagen.uri !== 'string'
+    ) {
+      return lugar;
+    }
+
+    const url = imagen.uri;
+
+    // Solo descargamos imágenes remotas.
+    if (!/^https?:\/\//i.test(url)) {
+      return lugar;
+    }
+
+    const extension =
+      url.split(/[?#]/)[0].match(/\.(jpg|jpeg|png|webp)$/i)?.[0] ??
+      '.img';
+
+    const idSeguro = lugar.id.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const hash = generarHashImagen(url);
+
+    const archivo = new File(
+      directorio,
+      `${idSeguro}-${hash}${extension}`,
+    );
+
+    // Reutilizamos la imagen si ya está guardada.
+    if (archivo.exists) {
+      return {
+        ...lugar,
+        imagen: { uri: archivo.uri },
+      };
+    }
+
+    const archivoDescargado = await File.downloadFileAsync(
+      url,
+      archivo,
+      { idempotent: true },
+    );
+
+    return {
+      ...lugar,
+      imagen: { uri: archivoDescargado.uri },
+    };
+  } catch (error) {
+    console.warn(
+      `No se pudo guardar localmente la imagen de ${lugar.nombre}:`,
+      error,
+    );
+
+    return lugar;
+  }
+}
 
 // --------------------------------------------------
 // NORMALIZAR NOMBRES
@@ -325,7 +406,9 @@ function convertirHorario(
 // --------------------------------------------------
 
 
-function obtenerAudioAPI(lugar: LugarAPI): any {
+async function obtenerAudioAPI(
+  lugar: LugarAPI
+): Promise<{ uri: string } | undefined> {
   const audioguia = lugar.audioguia;
 
   const url =
@@ -337,11 +420,18 @@ function obtenerAudioAPI(lugar: LugarAPI): any {
     return undefined;
   }
 
-  console.log('AUDIO RECIBIDO DESDE API:', url);
+  const urlPreparada = prepararUrlImagen(url);
 
-  return {
-    uri: prepararUrlImagen(url),
-  };
+  console.log(
+    'AUDIO RECIBIDO DESDE API:',
+    lugar.id,
+    urlPreparada
+  );
+
+  return await obtenerAudioLocal(
+    urlPreparada,
+    lugar.id
+  );
 }
 
 // --------------------------------------------------
@@ -499,13 +589,22 @@ const imagenesLocalesAPI: Record<string, any> = {
   'lug-024': require('../../assets/images/lugares/api/lug-024.jpg'),
   'lug-025': require('../../assets/images/lugares/api/lug-025.jpg'),
   'lug-027': require('../../assets/images/lugares/api/lug-027.jpg'),
+  'lug-002': require('../../assets/images/lugares/api/lug-002.jpg'),
+  'lug-005': require('../../assets/images/lugares/api/lug-005.jpg'),
+  'lug-006': require('../../assets/images/lugares/api/lug-006.jpg'),
+  'lug-007': require('../../assets/images/lugares/api/lug-007.png'),
+  'lug-010': require('../../assets/images/lugares/api/lug-010.jpg'),
+  'lug-012': require('../../assets/images/lugares/api/lug-012.png'),
+  'lug-017': require('../../assets/images/lugares/api/lug-017.png'),
+  'lug-018': require('../../assets/images/lugares/api/lug-018.jpg'),
+  'lug-020': require('../../assets/images/lugares/api/lug-020.jpg'),
 };
 
-function convertirLugarAPI(
+async function convertirLugarAPI(
   lugar: LugarAPI,
   categorias: CategoriaAPI[],
   lugarLocal?: Place
-): Place {
+): Promise<Place> {
   const categoria = normalizarCategoria(
     obtenerCategoria(lugar.categoriaId, categorias)
   );
@@ -561,14 +660,17 @@ function convertirLugarAPI(
       lugarLocal?.precio ?? lugar.precioEntrada,
       'Consultar precio'
     ),
-    // Priorizamos la imagen de la API si existe.
+    // Priorizamos las imágenes locales para permitir el uso sin conexión.
     imagen:
-      imagenRemota ??
       lugarLocal?.imagen ??
-      imagenesLocalesAPI[lugar.id],
+      imagenesLocalesAPI[lugar.id] ??
+      imagenRemota,
 
-    // Priorizamos la audioguía local si existe.
-    audio: lugarLocal?.audio ?? obtenerAudioAPI(lugar),
+    // Priorizamos el MP3 incorporado en la aplicación.
+    // Si no existe, descargamos la audioguía de la API.
+    audio:
+      lugarLocal?.audio ??
+      (await obtenerAudioAPI(lugar)),
 
     transcripcion:
       lugarLocal?.transcripcion ??
@@ -619,18 +721,74 @@ export async function obtenerLugaresIntegrados(): Promise<Place[]> {
       categoria: normalizarCategoria(lugar.categoria),
     }));
 
+    // Asociamos el ID de la API al Parque Quirós local,
+    // sin reemplazar sus datos ni incorporarlo nuevamente.
+    const parqueQuirosAPI = lugaresAPI.find(
+      (lugarAPI) =>
+        lugarAPI.id === 'lug-015' &&
+        lugarAPI.activo !== false
+    );
+
+    if (parqueQuirosAPI) {
+      const indiceParqueQuiros = resultado.findIndex(
+        (lugar) => lugar.id === 'parque-quiros'
+      );
+
+      if (indiceParqueQuiros !== -1) {
+        resultado[indiceParqueQuiros] = {
+          ...resultado[indiceParqueQuiros],
+          apiId: parqueQuirosAPI.id,
+        };
+
+        console.log('PARQUE QUIROS ASOCIADO:', {
+          idLocal: resultado[indiceParqueQuiros].id,
+          apiId: resultado[indiceParqueQuiros].apiId,
+          nombre: resultado[indiceParqueQuiros].nombre,
+        });
+      }
+    }
+
+    // Asociamos el ID de la API al Museo Histórico Regional de Colón local,
+    // sin reemplazar sus datos ni incorporarlo nuevamente.
+    const museoColonAPI = lugaresAPI.find(
+      (lugarAPI) =>
+        lugarAPI.id === 'lug-028' &&
+        lugarAPI.activo !== false
+    );
+
+    if (museoColonAPI) {
+      const indiceMuseoColon = resultado.findIndex(
+        (lugar) => lugar.id === 'museo-historico-colon'
+      );
+
+      if (indiceMuseoColon !== -1) {
+        resultado[indiceMuseoColon] = {
+          ...resultado[indiceMuseoColon],
+          apiId: museoColonAPI.id,
+        };
+
+        console.log('MUSEO COLON ASOCIADO:', {
+          idLocal: resultado[indiceMuseoColon].id,
+          apiId: resultado[indiceMuseoColon].apiId,
+          nombre: resultado[indiceMuseoColon].nombre,
+        });
+      }
+    }
+
+    // Filtramos los lugares activos y evitamos duplicados.
     const nombresAPIProcesados = new Set<string>();
+    const lugaresAPIUnicos: LugarAPI[] = [];
+
+    const lugaresExcluidosAPI = [
+      'lug-028',
+      'lug-015',
+      'lug-014',
+    ];
 
     for (const lugarAPI of lugaresAPI) {
       if (lugarAPI.activo === false) {
         continue;
       }
-
-      const lugaresExcluidosAPI = [
-        'lug-028',
-        'lug-015',
-        'lug-014',
-      ];
 
       if (lugaresExcluidosAPI.includes(lugarAPI.id)) {
         continue;
@@ -645,31 +803,78 @@ export async function obtenerLugaresIntegrados(): Promise<Place[]> {
       }
 
       nombresAPIProcesados.add(nombreNormalizado);
+      lugaresAPIUnicos.push(lugarAPI);
+    }
 
-      const lugarLocal =
-        lugarAPI.id === 'lug-031'
-          ? lugares.find((lugar) => lugar.id === 'puerto-colon')
-          : buscarLugarLocal(lugarAPI.nombre);
+    // Convertimos los lugares en grupos de cuatro.
+    // Esto permite descargar varias audioguías simultáneamente.
+    const lugaresConvertidos: {
+      lugarLocal?: Place;
+      lugarConvertido: Place;
+    }[] = [];
 
-      if (lugarAPI.id === 'lug-031') {
-        console.log('DIAGNÓSTICO PUERTO:', {
-          nombreAPI: lugarAPI.nombre,
-          nombreNormalizadoAPI: normalizarNombre(lugarAPI.nombre),
-          nombresLocales: lugares.map((lugar) => ({
-            id: lugar.id,
-            nombre: lugar.nombre,
-            nombreNormalizado: normalizarNombre(lugar.nombre),
-          })),
-          lugarLocalEncontrado: lugarLocal?.id ?? 'NO ENCONTRADO',
-        });
-      }
-
-      const lugarConvertido = convertirLugarAPI(
-        lugarAPI,
-        categorias,
-        lugarLocal
+    for (
+      let inicio = 0;
+      inicio < lugaresAPIUnicos.length;
+      inicio += 4
+    ) {
+      const lote = lugaresAPIUnicos.slice(
+        inicio,
+        inicio + 4
       );
 
+      const convertidos = await Promise.all(
+        lote.map(async (lugarAPI) => {
+          const lugarLocal =
+            lugarAPI.id === 'lug-031'
+              ? lugares.find(
+                (lugar) => lugar.id === 'puerto-colon'
+              )
+              : buscarLugarLocal(lugarAPI.nombre);
+
+          if (lugarAPI.id === 'lug-031') {
+            console.log('DIAGNÓSTICO PUERTO:', {
+              nombreAPI: lugarAPI.nombre,
+              nombreNormalizadoAPI: normalizarNombre(
+                lugarAPI.nombre
+              ),
+              nombresLocales: lugares.map((lugar) => ({
+                id: lugar.id,
+                nombre: lugar.nombre,
+                nombreNormalizado: normalizarNombre(
+                  lugar.nombre
+                ),
+              })),
+              lugarLocalEncontrado:
+                lugarLocal?.id ?? 'NO ENCONTRADO',
+            });
+          }
+
+          const lugarConvertido = await convertirLugarAPI(
+            lugarAPI,
+            categorias,
+            lugarLocal
+          );
+
+          return {
+            lugarLocal,
+            lugarConvertido,
+          };
+        })
+      );
+
+      lugaresConvertidos.push(...convertidos);
+
+      console.log(
+        `Lugares convertidos: ${lugaresConvertidos.length}/${lugaresAPIUnicos.length}`
+      );
+    }
+
+    // Incorporamos los lugares convertidos al catálogo.
+    for (const {
+      lugarLocal,
+      lugarConvertido,
+    } of lugaresConvertidos) {
       if (lugarLocal) {
         const indice = resultado.findIndex(
           (item) => item.id === lugarLocal.id
@@ -695,7 +900,54 @@ export async function obtenerLugaresIntegrados(): Promise<Place[]> {
         }))
     );
 
-    // Guardamos la lista integrada en SQLite.
+    // --------------------------------------------------
+    // DESCARGAR IMÁGENES PARA USO SIN CONEXIÓN
+    // --------------------------------------------------
+
+    const directorioImagenes = new Directory(
+      Paths.document,
+      'imagenes-lugares',
+    );
+
+    try {
+      if (!directorioImagenes.exists) {
+        directorioImagenes.create({
+          idempotent: true,
+          intermediates: true,
+        });
+      }
+
+      for (
+        let inicio = 0;
+        inicio < resultado.length;
+        inicio += 4
+      ) {
+        const lote = resultado.slice(inicio, inicio + 4);
+
+        const lugaresConImagenesLocales = await Promise.all(
+          lote.map((lugar) =>
+            descargarImagenLugar(lugar, directorioImagenes),
+          ),
+        );
+
+        resultado.splice(
+          inicio,
+          lugaresConImagenesLocales.length,
+          ...lugaresConImagenesLocales,
+        );
+      }
+
+      console.log(
+        'Imágenes del catálogo procesadas para uso sin conexión.',
+      );
+    } catch (error) {
+      console.warn(
+        'No se pudo preparar el almacenamiento local de imágenes:',
+        error,
+      );
+    }
+
+    // Guardamos el catálogo y las rutas de imágenes en SQLite.
     guardarLugaresLocales(resultado);
 
     return resultado;

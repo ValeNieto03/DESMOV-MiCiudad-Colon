@@ -232,15 +232,15 @@ describe('Especificación §8 — Catálogo de demo', () => {
         { dia: 2, abre: '09:00', cierra: '19:00' },
         { dia: 6, abre: '10:00', cierra: '20:00' },
       ],
-      telefono: '345-4421234',
-      sitioWeb: null,
+      telefono: '+54 9 3447 577133',
+      sitioWeb: 'https://www.molinoforclaz.com/',
       precioEntrada: 1500,
       codigoQr: 'COLON:lug-004',
       accesible: false,
       activo: true,
       actualizadoEn: '2026-08-01T10:30:00-03:00',
     });
-    expect(molino.audioguia).toMatchObject({ duracionSegundos: 252, idioma: 'es' });
+    expect(molino.audioguia).toMatchObject({ duracionSegundos: 188, idioma: 'es' });
     expect(molino.imagenes).toHaveLength(1);
   });
 

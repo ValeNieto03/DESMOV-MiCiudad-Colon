@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1022578653821",
+    "project_id": "mi-ciudad---colon",
+    "storage_bucket": "mi-ciudad---colon.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1022578653821:android:61d2c7eadad3c317c64f14",
+        "android_client_info": {
+          "package_name": "com.desmovgrupo16.miciudadcolon"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB0MHcSWpR0te5zOtZ5rXAFN7zIm-f07lk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

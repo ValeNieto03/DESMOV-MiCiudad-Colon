@@ -21,6 +21,13 @@ import {
   quitarEventoGuardadoAPI,
 } from '@/servicios/api';
 
+import {
+  programarRecordatorioEvento,
+  cancelarRecordatorioEvento,
+} from '@/servicios/recordatorios-eventos';
+
+import { useThemeContext } from '@/contexts/ThemeContext';
+
 function formatearFecha(fecha: string): string {
   return new Date(fecha).toLocaleString('es-AR', {
     weekday: 'long',
@@ -34,6 +41,8 @@ function formatearFecha(fecha: string): string {
 }
 
 export default function AgendaScreen() {
+  const { colors } = useThemeContext();
+
   const [eventos, setEventos] = useState<EventoAPI[]>([]);
   const [lugares, setLugares] = useState<LugarAPI[]>([]);
   const [guardadosIds, setGuardadosIds] = useState<string[]>([]);
@@ -108,6 +117,7 @@ export default function AgendaScreen() {
       if (yaGuardado) {
         await quitarEventoGuardadoAPI(evento.id);
 
+        await cancelarRecordatorioEvento(evento.id);
         setGuardadosIds((actuales) =>
           actuales.filter((id) => id !== evento.id),
         );
@@ -118,6 +128,8 @@ export default function AgendaScreen() {
         );
       } else {
         await guardarEventoAPI(evento.id);
+
+        await programarRecordatorioEvento(evento);
 
         setGuardadosIds((actuales) =>
           actuales.includes(evento.id)
@@ -161,6 +173,196 @@ export default function AgendaScreen() {
     }
   }
 
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    contenido: {
+      padding: 18,
+      paddingBottom: 35,
+    },
+    encabezado: {
+      marginTop: 12,
+      marginBottom: 18,
+    },
+    titulo: {
+      fontSize: 29,
+      fontWeight: '800',
+      color: colors.text,
+    },
+    subtitulo: {
+      marginTop: 7,
+      fontSize: 15,
+      lineHeight: 22,
+      color: colors.textSecondary,
+    },
+    botonActualizar: {
+      alignSelf: 'flex-start',
+      backgroundColor: colors.successBackground,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: 12,
+      marginBottom: 18,
+    },
+    textoBotonActualizar: {
+      color: colors.success,
+      fontWeight: '700',
+      fontSize: 14,
+    },
+    contador: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      fontWeight: '600',
+      marginBottom: 12,
+    },
+    tarjeta: {
+      backgroundColor: colors.backgroundElement,
+      borderRadius: 18,
+      overflow: 'hidden',
+      marginBottom: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    imagen: {
+      width: '100%',
+      height: 190,
+      backgroundColor: colors.backgroundSelected,
+    },
+    imagenVacia: {
+      height: 150,
+      backgroundColor: colors.backgroundSelected,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    emojiImagen: {
+      fontSize: 38,
+    },
+    textoImagenVacia: {
+      color: colors.textSecondary,
+      marginTop: 7,
+      fontWeight: '600',
+    },
+    contenidoTarjeta: {
+      padding: 17,
+    },
+    etiquetaEstado: {
+      alignSelf: 'flex-start',
+      backgroundColor: colors.successBackground,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 7,
+      marginBottom: 10,
+    },
+    textoEtiquetaEstado: {
+      color: colors.success,
+      fontSize: 11,
+      fontWeight: '800',
+    },
+    etiquetaSuspendido: {
+      backgroundColor: colors.dangerBackground,
+    },
+    textoSuspendido: {
+      color: colors.danger,
+    },
+    tituloEvento: {
+      fontSize: 21,
+      fontWeight: '800',
+      color: colors.text,
+      marginBottom: 13,
+    },
+    dato: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginBottom: 9,
+    },
+    iconoDato: {
+      fontSize: 16,
+      marginRight: 9,
+    },
+    textoDato: {
+      flex: 1,
+      color: colors.textSecondary,
+      fontSize: 14,
+      lineHeight: 21,
+    },
+    descripcion: {
+      marginTop: 9,
+      fontSize: 14,
+      lineHeight: 22,
+      color: colors.textSecondary,
+    },
+    separador: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginVertical: 13,
+    },
+    precio: {
+      color: colors.success,
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    botonAgendar: {
+      backgroundColor: colors.primary,
+      paddingVertical: 13,
+      borderRadius: 11,
+      alignItems: 'center',
+      marginTop: 16,
+    },
+    botonGuardado: {
+      backgroundColor: colors.success,
+    },
+    botonDeshabilitado: {
+      opacity: 0.6,
+    },
+    textoBotonAgendar: {
+      color: colors.onPrimary,
+      fontWeight: '800',
+      fontSize: 14,
+    },
+    estado: {
+      alignItems: 'center',
+      padding: 35,
+    },
+    tarjetaEstado: {
+      backgroundColor: colors.backgroundElement,
+      borderRadius: 16,
+      padding: 24,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    emojiVacio: {
+      fontSize: 38,
+      marginBottom: 12,
+    },
+    tituloEstado: {
+      color: colors.text,
+      fontSize: 19,
+      fontWeight: '800',
+      textAlign: 'center',
+      marginBottom: 9,
+    },
+    textoEstado: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      lineHeight: 21,
+      textAlign: 'center',
+      marginTop: 9,
+    },
+    botonReintentar: {
+      marginTop: 18,
+      backgroundColor: colors.primary,
+      paddingHorizontal: 20,
+      paddingVertical: 11,
+      borderRadius: 10,
+    },
+    textoBotonReintentar: {
+      color: colors.onPrimary,
+      fontWeight: '700',
+    },
+  });
+
   return (
     <ScrollView
       style={styles.container}
@@ -186,7 +388,7 @@ export default function AgendaScreen() {
 
       {cargando ? (
         <View style={styles.estado}>
-          <ActivityIndicator size="large" color="#28745A" />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.textoEstado}>
             Buscando próximos eventos...
           </Text>
@@ -330,7 +532,7 @@ export default function AgendaScreen() {
                     }
                   >
                     {actualizando ? (
-                      <ActivityIndicator color="#FFFFFF" />
+                      <ActivityIndicator color={colors.onPrimary} />
                     ) : (
                       <Text style={styles.textoBotonAgendar}>
                         {evento.estado === 'suspendido'
@@ -350,193 +552,3 @@ export default function AgendaScreen() {
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F6F1',
-  },
-  contenido: {
-    padding: 18,
-    paddingBottom: 35,
-  },
-  encabezado: {
-    marginTop: 12,
-    marginBottom: 18,
-  },
-  titulo: {
-    fontSize: 29,
-    fontWeight: '800',
-    color: '#253A32',
-  },
-  subtitulo: {
-    marginTop: 7,
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#77736B',
-  },
-  botonActualizar: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#E5EEE8',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    marginBottom: 18,
-  },
-  textoBotonActualizar: {
-    color: '#28745A',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  contador: {
-    fontSize: 15,
-    color: '#77736B',
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  tarjeta: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    overflow: 'hidden',
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#EAE7DF',
-  },
-  imagen: {
-    width: '100%',
-    height: 190,
-    backgroundColor: '#EAE7DF',
-  },
-  imagenVacia: {
-    height: 150,
-    backgroundColor: '#E8EEE8',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emojiImagen: {
-    fontSize: 38,
-  },
-  textoImagenVacia: {
-    color: '#61756A',
-    marginTop: 7,
-    fontWeight: '600',
-  },
-  contenidoTarjeta: {
-    padding: 17,
-  },
-  etiquetaEstado: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#E5F1E8',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 7,
-    marginBottom: 10,
-  },
-  textoEtiquetaEstado: {
-    color: '#28745A',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  etiquetaSuspendido: {
-    backgroundColor: '#FCE8E6',
-  },
-  textoSuspendido: {
-    color: '#A13A32',
-  },
-  tituloEvento: {
-    fontSize: 21,
-    fontWeight: '800',
-    color: '#253A32',
-    marginBottom: 13,
-  },
-  dato: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 9,
-  },
-  iconoDato: {
-    fontSize: 16,
-    marginRight: 9,
-  },
-  textoDato: {
-    flex: 1,
-    color: '#555B55',
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  descripcion: {
-    marginTop: 9,
-    fontSize: 14,
-    lineHeight: 22,
-    color: '#66665F',
-  },
-  separador: {
-    height: 1,
-    backgroundColor: '#EAE7DF',
-    marginVertical: 13,
-  },
-  precio: {
-    color: '#28745A',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  botonAgendar: {
-    backgroundColor: '#28745A',
-    paddingVertical: 13,
-    borderRadius: 11,
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  botonGuardado: {
-    backgroundColor: '#64756C',
-  },
-  botonDeshabilitado: {
-    opacity: 0.6,
-  },
-  textoBotonAgendar: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 14,
-  },
-  estado: {
-    alignItems: 'center',
-    padding: 35,
-  },
-  tarjetaEstado: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#EAE7DF',
-  },
-  emojiVacio: {
-    fontSize: 38,
-    marginBottom: 12,
-  },
-  tituloEstado: {
-    color: '#253A32',
-    fontSize: 19,
-    fontWeight: '800',
-    textAlign: 'center',
-    marginBottom: 9,
-  },
-  textoEstado: {
-    color: '#77736B',
-    fontSize: 14,
-    lineHeight: 21,
-    textAlign: 'center',
-    marginTop: 9,
-  },
-  botonReintentar: {
-    marginTop: 18,
-    backgroundColor: '#28745A',
-    paddingHorizontal: 20,
-    paddingVertical: 11,
-    borderRadius: 10,
-  },
-  textoBotonReintentar: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-});

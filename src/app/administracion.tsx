@@ -18,11 +18,16 @@ import {
   LugarAPI,
   subirAudioguiaAPI,
   subirImagenAPI,
+  prepararUrlAudioguia,
 } from '@/servicios/api';
 import { transcripcionesAudioguiasAPI } from '@/servicios/lugares-integrados';
+import ReproductorAudioguia from '@/components/ReproductorAudioguia';
 import EventosAdminPanel, {
   EventoAdmin,
 } from '@/components/EventosAdminPanel';
+
+import { Colors } from '@/constants/theme';
+import { useThemeContext } from '@/contexts/ThemeContext';
 
 type Seccion = 'audioguias' | 'eventos';
 type Idioma = 'es' | 'en' | 'pt';
@@ -48,6 +53,9 @@ const CLAVE_AUDIO_VALIDA =
   /^audios\/\d{4}\/\d{2}\/[a-z0-9-]{3,60}\.(m4a|aac|mp3)$/;
 
 export default function AdministracionScreen() {
+  const { colors } = useThemeContext();
+  const styles = crearEstilos(colors);
+
   const [verificandoSesion, setVerificandoSesion] = useState(true);
   const [cargando, setCargando] = useState(false);
   const [seccion, setSeccion] = useState<Seccion>('audioguias');
@@ -65,6 +73,8 @@ export default function AdministracionScreen() {
   const [idioma, setIdioma] = useState<Idioma>('es');
 
   const [audioguias, setAudioguias] = useState<AudioguiaAdmin[]>([]);
+  const [audioEnVistaPrevia, setAudioEnVistaPrevia] =
+    useState<string | null>(null);
   const [cargandoAudioguias, setCargandoAudioguias] = useState(false);
   const [subiendoAudioguia, setSubiendoAudioguia] = useState(false);
   const [subiendoImagen, setSubiendoImagen] = useState(false);
@@ -189,6 +199,8 @@ export default function AdministracionScreen() {
   }, []);
 
   useEffect(() => {
+    setAudioEnVistaPrevia(null);
+
     if (lugarSeleccionado) {
       cargarAudioguias(lugarSeleccionado);
     } else {
@@ -250,7 +262,7 @@ export default function AdministracionScreen() {
 
       Alert.alert(
         'Audioguía cargada',
-        `El nuevo audio de ${lugarActual.nombre} quedó activo.`,
+        `El nuevo audio de ${lugarActual.nombre} se guardó como una versión inactiva. Podés escucharla desde el historial y activarla cuando quieras.`,
       );
 
       await cargarAudioguias(lugarActual.id);
@@ -586,7 +598,7 @@ export default function AdministracionScreen() {
   if (verificandoSesion) {
     return (
       <View style={styles.centrado}>
-        <ActivityIndicator size="large" color="#315C49" />
+        <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.textoCarga}>Verificando permisos...</Text>
       </View>
     );
@@ -642,7 +654,7 @@ export default function AdministracionScreen() {
 
         {cargando ? (
           <View style={styles.centrado}>
-            <ActivityIndicator size="large" color="#315C49" />
+            <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.textoCarga}>
               Cargando información...
             </Text>
@@ -685,7 +697,7 @@ export default function AdministracionScreen() {
                 disabled={recuperandoTranscripciones}
               >
                 {recuperandoTranscripciones ? (
-                  <ActivityIndicator color="#FFFFFF" />
+                  <ActivityIndicator color={colors.onPrimary} />
                 ) : (
                   <Text style={styles.textoBoton}>
                     Recuperar transcripciones existentes
@@ -767,7 +779,7 @@ export default function AdministracionScreen() {
                   disabled={subiendoAudioguia}
                 >
                   {subiendoAudioguia ? (
-                    <ActivityIndicator color="#FFFFFF" />
+                    <ActivityIndicator color={colors.onPrimary} />
                   ) : (
                     <Text style={styles.textoBoton}>
                       Agregar archivo MP3
@@ -798,7 +810,7 @@ export default function AdministracionScreen() {
                   disabled={subiendoImagen}
                 >
                   {subiendoImagen ? (
-                    <ActivityIndicator color="#315C49" />
+                    <ActivityIndicator color={colors.primary} />
                   ) : (
                     <Text style={styles.textoBotonSecundario}>
                       Agregar imagen del lugar
@@ -836,7 +848,7 @@ export default function AdministracionScreen() {
                   <>
                     {cargandoAudioguias ? (
                       <View style={styles.centrado}>
-                        <ActivityIndicator color="#315C49" />
+                        <ActivityIndicator color={colors.primary} />
                         <Text style={styles.textoCarga}>
                           Cargando historial...
                         </Text>
@@ -874,6 +886,30 @@ export default function AdministracionScreen() {
                               Archivo: {audio.clave.split('/').pop()}
                             </Text>
 
+                            <Pressable
+                              style={styles.botonSecundario}
+                              onPress={() =>
+                                setAudioEnVistaPrevia((actual) =>
+                                  actual === audio.id ? null : audio.id,
+                                )
+                              }
+                            >
+                              <Text style={styles.textoBotonSecundario}>
+                                {audioEnVistaPrevia === audio.id
+                                  ? 'Cerrar vista previa ▲'
+                                  : '▶ Escuchar esta versión'}
+                              </Text>
+                            </Pressable>
+
+                            {audioEnVistaPrevia === audio.id && (
+                              <ReproductorAudioguia
+                                key={audio.id}
+                                fuente={{ uri: prepararUrlAudioguia(audio.clave) }}
+                                lugarId={`vista-previa-${audio.id}`}
+                                nombre="Vista previa de audioguía"
+                              />
+                            )}
+
                             {!audio.activa && (
                               <Pressable
                                 style={styles.botonSecundario}
@@ -881,7 +917,7 @@ export default function AdministracionScreen() {
                                 onPress={() => activarVersion(audio.id)}
                               >
                                 {actualizandoAudioguia === audio.id ? (
-                                  <ActivityIndicator color="#315C49" />
+                                  <ActivityIndicator color={colors.primary} />
                                 ) : (
                                   <Text style={styles.textoBotonSecundario}>
                                     Activar esta versión
@@ -938,7 +974,7 @@ export default function AdministracionScreen() {
                                   onPress={() => guardarTranscripcion(audio.id)}
                                 >
                                   {actualizandoAudioguia === audio.id ? (
-                                    <ActivityIndicator color="#315C49" />
+                                    <ActivityIndicator color={colors.primary} />
                                   ) : (
                                     <Text style={styles.textoBotonSecundario}>
                                       Guardar transcripción
@@ -967,258 +1003,263 @@ export default function AdministracionScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  contenedor: {
-    flex: 1,
-    backgroundColor: '#F8F7F2',
-  },
-  contenido: {
-    padding: 20,
-    paddingBottom: 35,
-  },
-  centrado: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  textoCarga: {
-    marginTop: 12,
-    color: '#77736B',
-    fontSize: 14,
-  },
-  titulo: {
-    fontSize: 27,
-    fontWeight: '800',
-    color: '#253A32',
-  },
-  subtitulo: {
-    fontSize: 14,
-    color: '#77736B',
-    marginTop: 6,
-    marginBottom: 20,
-    lineHeight: 21,
-  },
-  pestanas: {
-    flexDirection: 'row',
-    backgroundColor: '#EAE9E2',
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 18,
-  },
-  pestana: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: 9,
-  },
-  pestanaActiva: {
-    backgroundColor: '#315C49',
-  },
-  textoPestana: {
-    color: '#625F58',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  textoPestanaActivo: {
-    color: '#FFFFFF',
-  },
-  tarjeta: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 17,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#EAE8E0',
-  },
-  tituloTarjeta: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#253A32',
-    marginBottom: 8,
-  },
-  textoSecundario: {
-    fontSize: 13,
-    color: '#77736B',
-    lineHeight: 19,
-    marginBottom: 5,
-  },
-  etiqueta: {
-    color: '#454B45',
-    fontSize: 13,
-    fontWeight: '700',
-    marginTop: 17,
-    marginBottom: 8,
-  },
-  opcionLugar: {
-    padding: 12,
-    borderRadius: 9,
-    backgroundColor: '#F7F6F1',
-    marginBottom: 7,
-    borderWidth: 1,
-    borderColor: '#EAE8E0',
-  },
-  opcionLugarActiva: {
-    borderColor: '#315C49',
-    backgroundColor: '#EDF3EE',
-  },
-  filaLugar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  nombreLugar: {
-    color: '#253A32',
-    fontSize: 14,
-    fontWeight: '700',
-    flex: 1,
-  },
-  marcaSeleccion: {
-    color: '#315C49',
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  campo: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#D8D6CD',
-    borderRadius: 9,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 13,
-    color: '#253A32',
-  },
-  campoTranscripcion: {
-    minHeight: 110,
-    marginTop: 4,
-  },
-  filaIdiomas: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  botonIdioma: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#D8D6CD',
-    borderRadius: 9,
-    paddingVertical: 11,
-    alignItems: 'center',
-  },
-  botonIdiomaActivo: {
-    backgroundColor: '#315C49',
-    borderColor: '#315C49',
-  },
-  textoIdioma: {
-    color: '#625F58',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  textoIdiomaActivo: {
-    color: '#FFFFFF',
-  },
-  botonPrincipal: {
-    backgroundColor: '#315C49',
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
-    minHeight: 46,
-  },
-  textoBoton: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  botonDeshabilitado: {
-    opacity: 0.5,
-  },
-  audioVersion: {
-    borderWidth: 1,
-    borderColor: '#EAE8E0',
-    borderRadius: 10,
-    padding: 12,
-    marginTop: 12,
-    backgroundColor: '#F7F6F1',
-  },
-  insigniaActiva: {
-    backgroundColor: '#EDF3EE',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-  },
-  textoInsignia: {
-    color: '#315C49',
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  botonSecundario: {
-    borderWidth: 1,
-    borderColor: '#315C49',
-    borderRadius: 9,
-    paddingVertical: 11,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 10,
-    minHeight: 42,
-  },
-  textoBotonSecundario: {
-    color: '#315C49',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  estadoActual: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    marginTop: 10,
-  },
-  estadoTexto: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#315C49',
-    marginLeft: 7,
-  },
-  estadoCancelado: {
-    color: '#B04444',
-  },
-  estadoSuspendido: {
-    color: '#A36B20',
-  },
-  estadoFinalizado: {
-    color: '#77736B',
-  },
-  filaEstados: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 7,
-  },
-  botonEstado: {
-    flex: 1,
-    minWidth: 90,
-    borderWidth: 1,
-    borderColor: '#D8D6CD',
-    borderRadius: 8,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  botonEstadoActivo: {
-    backgroundColor: '#EDF3EE',
-    borderColor: '#315C49',
-  },
-  textoEstado: {
-    color: '#625F58',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  textoEstadoActivo: {
-    color: '#315C49',
-  },
-  error: {
-    color: '#B04444',
-    fontWeight: '800',
-    fontSize: 15,
-    marginBottom: 8,
-  },
-});
+
+function crearEstilos(
+  colors: (typeof Colors)[keyof typeof Colors],
+) {
+  return StyleSheet.create({
+    contenedor: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    contenido: {
+      padding: 20,
+      paddingBottom: 35,
+    },
+    centrado: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 24,
+    },
+    textoCarga: {
+      marginTop: 12,
+      color: colors.textSecondary,
+      fontSize: 14,
+    },
+    titulo: {
+      fontSize: 27,
+      fontWeight: '800',
+      color: colors.text,
+    },
+    subtitulo: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 6,
+      marginBottom: 20,
+      lineHeight: 21,
+    },
+    pestanas: {
+      flexDirection: 'row',
+      backgroundColor: colors.backgroundSelected,
+      borderRadius: 12,
+      padding: 4,
+      marginBottom: 18,
+    },
+    pestana: {
+      flex: 1,
+      paddingVertical: 12,
+      alignItems: 'center',
+      borderRadius: 9,
+    },
+    pestanaActiva: {
+      backgroundColor: colors.primary,
+    },
+    textoPestana: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    textoPestanaActivo: {
+      color: colors.onPrimary,
+    },
+    tarjeta: {
+      backgroundColor: colors.backgroundElement,
+      borderRadius: 14,
+      padding: 17,
+      marginBottom: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    tituloTarjeta: {
+      fontSize: 18,
+      fontWeight: '800',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    textoSecundario: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      lineHeight: 19,
+      marginBottom: 5,
+    },
+    etiqueta: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: '700',
+      marginTop: 17,
+      marginBottom: 8,
+    },
+    opcionLugar: {
+      padding: 12,
+      borderRadius: 9,
+      backgroundColor: colors.background,
+      marginBottom: 7,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    opcionLugarActiva: {
+      borderColor: colors.primary,
+      backgroundColor: colors.backgroundSelected,
+    },
+    filaLugar: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    nombreLugar: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '700',
+      flex: 1,
+    },
+    marcaSeleccion: {
+      color: colors.primary,
+      fontSize: 18,
+      fontWeight: '800',
+    },
+    campo: {
+      backgroundColor: colors.inputBackground,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      borderRadius: 9,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      fontSize: 13,
+      color: colors.text,
+    },
+    campoTranscripcion: {
+      minHeight: 110,
+      marginTop: 4,
+    },
+    filaIdiomas: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    botonIdioma: {
+      flex: 1,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      borderRadius: 9,
+      paddingVertical: 11,
+      alignItems: 'center',
+    },
+    botonIdiomaActivo: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    textoIdioma: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    textoIdiomaActivo: {
+      color: colors.onPrimary,
+    },
+    botonPrincipal: {
+      backgroundColor: colors.primary,
+      borderRadius: 10,
+      paddingVertical: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 20,
+      minHeight: 46,
+    },
+    textoBoton: {
+      color: colors.onPrimary,
+      fontSize: 14,
+      fontWeight: '800',
+    },
+    botonDeshabilitado: {
+      opacity: 0.5,
+    },
+    audioVersion: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      padding: 12,
+      marginTop: 12,
+      backgroundColor: colors.background,
+    },
+    insigniaActiva: {
+      backgroundColor: colors.successBackground,
+      borderRadius: 6,
+      paddingHorizontal: 8,
+      paddingVertical: 5,
+    },
+    textoInsignia: {
+      color: colors.success,
+      fontSize: 10,
+      fontWeight: '800',
+    },
+    botonSecundario: {
+      borderWidth: 1,
+      borderColor: colors.primary,
+      borderRadius: 9,
+      paddingVertical: 11,
+      paddingHorizontal: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 10,
+      minHeight: 42,
+    },
+    textoBotonSecundario: {
+      color: colors.primary,
+      fontSize: 13,
+      fontWeight: '800',
+    },
+    estadoActual: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      marginTop: 10,
+    },
+    estadoTexto: {
+      fontSize: 12,
+      fontWeight: '800',
+      color: colors.success,
+      marginLeft: 7,
+    },
+    estadoCancelado: {
+      color: colors.danger,
+    },
+    estadoSuspendido: {
+      color: colors.warning,
+    },
+    estadoFinalizado: {
+      color: colors.textSecondary,
+    },
+    filaEstados: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 7,
+    },
+    botonEstado: {
+      flex: 1,
+      minWidth: 90,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      borderRadius: 8,
+      paddingVertical: 10,
+      alignItems: 'center',
+    },
+    botonEstadoActivo: {
+      backgroundColor: colors.backgroundSelected,
+      borderColor: colors.primary,
+    },
+    textoEstado: {
+      color: colors.textSecondary,
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    textoEstadoActivo: {
+      color: colors.primary,
+    },
+    error: {
+      color: colors.danger,
+      fontWeight: '800',
+      fontSize: 15,
+      marginBottom: 8,
+    },
+  });
+}

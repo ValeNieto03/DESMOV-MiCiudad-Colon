@@ -188,7 +188,8 @@ export class LugaresServicio implements OnModuleInit {
   }
 
   /** Asocia una audioguía a un lugar que ya existe. */
-  /** Agrega una audioguía nueva y la deja activa sin eliminar las anteriores. */
+
+  /** Agrega una audioguía nueva y la deja inactiva hasta su activación. */
   async actualizarAudioguia(
     id: string,
     dto: ActualizarAudioguiaDto,
@@ -234,45 +235,29 @@ export class LugaresServicio implements OnModuleInit {
 
     const ahora = this.reloj.ahora();
 
-    const audioguiaNueva = await this.repo.manager.transaction(
-      async (manager) => {
-        const repoLugares = manager.getRepository(LugarEntidad);
-        const repoAudios = manager.getRepository(AudioguiaEntidad);
+    await this.repo.manager.transaction(async (manager) => {
+      const repoLugares = manager.getRepository(LugarEntidad);
+      const repoAudios = manager.getRepository(AudioguiaEntidad);
 
-        const lugarActual = await repoLugares.findOneBy({ id });
+      const lugarActual = await repoLugares.findOneBy({ id });
 
-        if (!lugarActual) {
-          throw new ErrorApi('LUGAR_NO_ENCONTRADO');
-        }
+      if (!lugarActual) {
+        throw new ErrorApi('LUGAR_NO_ENCONTRADO');
+      }
 
-        await repoAudios.update(
-          { lugarId: id, activa: true },
-          { activa: false },
-        );
+      const nueva = repoAudios.create({
+        id: nuevoId('aud'),
+        lugarId: id,
+        clave: dto.clave,
+        idioma: dto.idioma,
+        duracionSegundos,
+        transcripcion: null,
+        activa: false,
+        creadoEn: ahora,
+      });
 
-        const nueva = repoAudios.create({
-          id: nuevoId('aud'),
-          lugarId: id,
-          clave: dto.clave,
-          idioma: dto.idioma,
-          duracionSegundos,
-          transcripcion: null,
-          activa: true,
-          creadoEn: ahora,
-        });
-
-        await repoAudios.save(nueva);
-
-        lugarActual.audioguiaClave = dto.clave;
-        lugarActual.audioguiaDuracionSegundos = duracionSegundos;
-        lugarActual.audioguiaIdioma = dto.idioma;
-        lugarActual.actualizadoEn = ahora;
-
-        await repoLugares.save(lugarActual);
-
-        return nueva;
-      },
-    );
+      await repoAudios.save(nueva);
+    });
 
     const actualizado = await this.buscar(id);
 
@@ -280,8 +265,14 @@ export class LugaresServicio implements OnModuleInit {
       throw new ErrorApi('LUGAR_NO_ENCONTRADO');
     }
 
-    return aContrato(actualizado, ahora, audioguiaNueva);
+    const audioguiaActiva = await this.repoAudioguias.findOneBy({
+      lugarId: id,
+      activa: true,
+    });
+
+    return aContrato(actualizado, ahora, audioguiaActiva);
   }
+
 
   /** Devuelve la audioguía activa con su transcripción para la app móvil. */
   async obtenerAudioguiaActiva(id: string) {

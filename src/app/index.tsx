@@ -7,19 +7,16 @@ import {
   Text,
   View,
 } from 'react-native';
-import MapView, {
-  Marker,
-  PROVIDER_GOOGLE,
-  type Region,
-} from 'react-native-maps';
+import WebView, {
+  type WebViewProps,
+  type WebViewMessageEvent,
+} from 'react-native-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
 import { lugares } from '@/data/lugares';
-import { inicializarBaseDeDatos } from '@/servicios/visitas';
-import { obtenerLugaresIntegrados } from '@/servicios/lugares-integrados';
-
-import type { Place } from '@/data/lugares';
+import { useCatalogo } from '@/servicios/CatalogoProvider';
+import { useThemeContext } from '@/contexts/ThemeContext';
 
 function calcularDistanciaKm(
   lat1: number,
@@ -51,24 +48,23 @@ function formatearDistancia(distanciaKm: number) {
   return `${distanciaKm.toFixed(1).replace('.', ',')} km`;
 }
 
-const REGION_INICIAL: Region = {
+const REGION_INICIAL = {
   latitude: -32.22477,
   longitude: -58.14261,
-  latitudeDelta: 0.025,
-  longitudeDelta: 0.025,
 };
 
 export default function HomeScreen() {
   const router = useRouter();
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<WebView<WebViewProps> | null>(null);
+
+  const { colors } = useThemeContext();
 
   const [selectedPlaceId, setSelectedPlaceId] =
     useState('centro-colon');
 
-  // La aplicación comienza con los datos locales.
-  // Cuando la API responde, actualiza la lista.
-  const [lugaresDisponibles, setLugaresDisponibles] =
-    useState<Place[]>(lugares);
+  const [mapaListo, setMapaListo] = useState(false);
+
+  const { lugaresDisponibles } = useCatalogo();
 
   const selectedPlace =
     lugaresDisponibles.find(
@@ -76,6 +72,10 @@ export default function HomeScreen() {
     ) ?? lugaresDisponibles[0] ?? lugares[0];
 
   const lugaresCercanos = useMemo(() => {
+    if (!selectedPlace) {
+      return [];
+    }
+
     return lugaresDisponibles
       .filter((lugar) => lugar.id !== selectedPlace.id)
       .map((lugar) => ({
@@ -90,57 +90,377 @@ export default function HomeScreen() {
       .sort((a, b) => a.distancia - b.distancia);
   }, [lugaresDisponibles, selectedPlace]);
 
-  // Inicialización de la base de datos local.
+  // Datos que se envían al mapa.
+  const lugaresParaMapa = useMemo(() => {
+    return JSON.stringify(
+      lugaresDisponibles.map((lugar) => ({
+        id: lugar.id,
+        nombre: lugar.nombre,
+        categoria: lugar.categoria,
+        latitud: lugar.latitud,
+        longitud: lugar.longitud,
+      }))
+    ).replace(/</g, '\\u003c');
+  }, [lugaresDisponibles]);
+
+  // Mapa Leaflet con OpenStreetMap.
+  const mapaHTML = useMemo(() => {
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+          />
+
+          <link
+            rel="stylesheet"
+            href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          />
+
+          <style>
+            * {
+              box-sizing: border-box;
+            }
+
+            html, body, #map {
+              width: 100%;
+              height: 100%;
+              margin: 0;
+              padding: 0;
+            }
+
+            body {
+              overflow: hidden;
+              background: ${colors.background};
+            }
+
+            .marcador {
+              width: 22px;
+              height: 22px;
+              border-radius: 50%;
+              background: ${colors.success};
+              border: 3px solid ${colors.backgroundElement};
+              box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+              transition: all 0.2s ease;
+            }
+
+            .marcador.seleccionado {
+              width: 30px;
+              height: 30px;
+              border-radius: 50%;
+              background: ${colors.primary};
+              border: 4px solid ${colors.backgroundElement};
+              box-shadow: 0 3px 9px rgba(0,0,0,0.45);
+            }
+
+            .marcador.seleccionado::after {
+              content: '';
+              display: block;
+              width: 6px;
+              height: 6px;
+              background: ${colors.backgroundElement};
+              border-radius: 50%;
+              margin: 8px auto;
+            }
+
+            .leaflet-popup-content-wrapper {
+              border-radius: 12px;
+              background: ${colors.backgroundElement};
+              color: ${colors.text};
+            }
+
+            .leaflet-popup-tip {
+              background: ${colors.backgroundElement};
+            }
+
+            .leaflet-popup-content {
+              font-family: Arial, sans-serif;
+              font-size: 13px;
+              color: ${colors.text};
+            }
+          </style>
+        </head>
+
+        <body>
+          <div id="map"></div>
+
+          <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+          <script>
+            const lugares = ${lugaresParaMapa};
+
+            const centroInicial = [
+              ${REGION_INICIAL.latitude},
+              ${REGION_INICIAL.longitude}
+            ];
+
+            const mapa = L.map('map', {
+              zoomControl: true,
+              attributionControl: true
+            }).setView(centroInicial, 15);
+
+            L.tileLayer(
+              'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+              {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap'
+              }
+            ).addTo(mapa);
+
+            const marcadores = {};
+
+            function crearIcono(seleccionado) {
+              return L.divIcon({
+                className: '',
+                html: seleccionado
+                  ? '<div class="marcador seleccionado"></div>'
+                  : '<div class="marcador"></div>',
+                iconSize: seleccionado ? [30, 30] : [22, 22],
+                iconAnchor: seleccionado ? [15, 15] : [11, 11]
+              });
+            }
+
+            lugares.forEach((lugar) => {
+              const marcador = L.marker(
+                [lugar.latitud, lugar.longitud],
+                {
+                  icon: crearIcono(false)
+                }
+              ).addTo(mapa);
+
+              marcador.bindPopup(
+                '<strong>' + lugar.nombre + '</strong><br>' +
+                lugar.categoria
+              );
+
+              marcador.on('click', () => {
+                window.ReactNativeWebView.postMessage(lugar.id);
+              });
+
+              marcadores[lugar.id] = marcador;
+            });
+
+            window.focusSelectedPlace = function(id, latitud, longitud) {
+              Object.keys(marcadores).forEach((marcadorId) => {
+                const seleccionado = marcadorId === id;
+
+                marcadores[marcadorId].setIcon(
+                  crearIcono(seleccionado)
+                );
+
+                marcadores[marcadorId].setZIndexOffset(
+                  seleccionado ? 1000 : 0
+                );
+              });
+
+              mapa.flyTo([latitud, longitud], 16, {
+                animate: true,
+                duration: 0.5
+              });
+            };
+
+            window.ReactNativeWebView.postMessage('MAPA_LISTO');
+          </script>
+        </body>
+      </html>
+    `;
+  }, [lugaresParaMapa, colors]);
+
+  // Centrar el mapa y destacar el marcador seleccionado.
   useEffect(() => {
-    try {
-      inicializarBaseDeDatos();
-      console.log('Base de datos inicializada correctamente');
-    } catch (error) {
-      console.error('Error al inicializar la base de datos:', error);
+    if (!mapaListo || !selectedPlace) {
+      return;
     }
-  }, []);
 
-  // Carga los lugares de la API sin impedir que la pantalla abra.
-  useEffect(() => {
-    let activo = true;
-
-    async function cargarLugares() {
-      try {
-        const resultado = await obtenerLugaresIntegrados();
-
-        if (activo && resultado.length > 0) {
-          setLugaresDisponibles(resultado);
-          console.log(
-            `Lugares cargados correctamente: ${resultado.length}`
-          );
-        }
-      } catch (error) {
-        console.error(
-          'No se pudieron cargar los lugares. Se mantienen los datos locales.',
-          error
+    const javascript = `
+      if (window.focusSelectedPlace) {
+        window.focusSelectedPlace(
+          ${JSON.stringify(selectedPlace.id)},
+          ${selectedPlace.latitud},
+          ${selectedPlace.longitud}
         );
       }
-    }
 
-    cargarLugares();
+      true;
+    `;
 
-    return () => {
-      activo = false;
-    };
-  }, []);
+    mapRef.current?.injectJavaScript(javascript);
+  }, [selectedPlace, mapaListo]);
 
-  // Centra el mapa en el lugar seleccionado.
-  useEffect(() => {
-    mapRef.current?.animateToRegion(
-      {
-        latitude: selectedPlace.latitud,
-        longitude: selectedPlace.longitud,
-        latitudeDelta: 0.012,
-        longitudeDelta: 0.012,
-      },
-      450
-    );
-  }, [selectedPlace]);
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        screen: {
+          flex: 1,
+          backgroundColor: colors.background,
+        },
+
+        container: {
+          flex: 1,
+          backgroundColor: colors.background,
+          paddingHorizontal: 20,
+        },
+
+        scrollContent: {
+          paddingBottom: 30,
+        },
+
+        header: {
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginTop: 15,
+          marginBottom: 20,
+        },
+
+        smallTitle: {
+          fontSize: 12,
+          fontWeight: '700',
+          color: colors.primary,
+          letterSpacing: 1.5,
+        },
+
+        title: {
+          fontSize: 34,
+          fontWeight: '800',
+          color: colors.text,
+          marginTop: 2,
+        },
+
+        subtitle: {
+          fontSize: 14,
+          color: colors.textSecondary,
+          marginTop: 2,
+        },
+
+        profileButton: {
+          width: 46,
+          height: 46,
+          borderRadius: 23,
+          backgroundColor: colors.backgroundSelected,
+          justifyContent: 'center',
+          alignItems: 'center',
+        },
+
+        profileIcon: {
+          fontSize: 21,
+        },
+
+        search: {
+          height: 52,
+          backgroundColor: colors.inputBackground,
+          borderRadius: 16,
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 16,
+          marginBottom: 18,
+          borderWidth: 1,
+          borderColor: colors.inputBorder,
+        },
+
+        searchIcon: {
+          fontSize: 28,
+          color: colors.primary,
+          marginRight: 10,
+        },
+
+        searchText: {
+          fontSize: 15,
+          color: colors.textSecondary,
+        },
+
+        mapCard: {
+          height: 210,
+          borderRadius: 22,
+          overflow: 'hidden',
+          marginBottom: 22,
+        },
+
+        map: {
+          flex: 1,
+        },
+
+        sectionHeader: {
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 12,
+        },
+
+        sectionTitle: {
+          fontSize: 20,
+          fontWeight: '800',
+          color: colors.text,
+        },
+
+        seeMore: {
+          fontSize: 13,
+          fontWeight: '600',
+          color: colors.primary,
+        },
+
+        cardsContainer: {
+          paddingBottom: 30,
+        },
+
+        placeCard: {
+          backgroundColor: colors.backgroundElement,
+          borderRadius: 16,
+          padding: 12,
+          marginBottom: 10,
+          flexDirection: 'row',
+          alignItems: 'center',
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+
+        placeIcon: {
+          width: 48,
+          height: 48,
+          borderRadius: 14,
+          backgroundColor: colors.successBackground,
+          justifyContent: 'center',
+          alignItems: 'center',
+          marginRight: 12,
+        },
+
+        placeIconText: {
+          fontSize: 22,
+        },
+
+        placeInfo: {
+          flex: 1,
+        },
+
+        placeName: {
+          fontSize: 15,
+          fontWeight: '700',
+          color: colors.text,
+        },
+
+        placeCategory: {
+          fontSize: 12,
+          color: colors.textSecondary,
+          marginTop: 2,
+        },
+
+        placeDistance: {
+          fontSize: 12,
+          color: colors.success,
+          fontWeight: '600',
+          marginTop: 3,
+        },
+
+        arrow: {
+          fontSize: 28,
+          color: colors.primary,
+          paddingHorizontal: 5,
+        },
+      }),
+    [colors]
+  );
 
   return (
     <View style={styles.screen}>
@@ -184,60 +504,43 @@ export default function HomeScreen() {
             </Text>
           </Pressable>
 
-          {/* Google Maps */}
+          {/* Mapa OpenStreetMap */}
           <View style={styles.mapCard}>
-            <MapView
+            <WebView
               ref={mapRef}
-              provider={PROVIDER_GOOGLE}
-              style={styles.map}
-              initialRegion={REGION_INICIAL}
-              showsCompass
-              showsScale
-              toolbarEnabled={false}
-              loadingEnabled
-            >
-              {lugaresDisponibles.map((lugar) => {
-                const seleccionado =
-                  lugar.id === selectedPlaceId;
+              source={{ html: mapaHTML }}
+              originWhitelist={['*']}
+              javaScriptEnabled
+              domStorageEnabled
+              nestedScrollEnabled
+              scrollEnabled={true}
+              onLoadEnd={() => setMapaListo(true)}
+              onMessage={(event: WebViewMessageEvent) => {
+                const mensaje = event.nativeEvent.data;
 
-                return (
-                  <Marker
-                    key={lugar.id}
-                    coordinate={{
-                      latitude: lugar.latitud,
-                      longitude: lugar.longitud,
-                    }}
-                    title={lugar.nombre}
-                    description={lugar.categoria}
-                    onPress={() => {
-                      setSelectedPlaceId(lugar.id);
-                    }}
-                    zIndex={seleccionado ? 2 : 1}
-                  >
-                    <View
-                      style={[
-                        styles.marker,
-                        seleccionado
-                          ? styles.markerSelected
-                          : styles.markerNormal,
-                      ]}
-                    >
-                      {seleccionado && (
-                        <View style={styles.markerDot} />
-                      )}
-                    </View>
-                  </Marker>
+                if (mensaje === 'MAPA_LISTO') {
+                  setMapaListo(true);
+                  return;
+                }
+
+                const lugarExiste = lugaresDisponibles.some(
+                  (lugar) => lugar.id === mensaje
                 );
-              })}
-            </MapView>
+
+                if (lugarExiste) {
+                  setSelectedPlaceId(mensaje);
+                }
+              }}
+              style={styles.map}
+            />
           </View>
 
           {/* Lugares cercanos */}
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>
-              {selectedPlace.id === 'centro-colon'
+              {selectedPlace?.id === 'centro-colon'
                 ? 'Lo que tenés cerca'
-                : `Cerca de ${selectedPlace.nombre}`}
+                : `Cerca de ${selectedPlace?.nombre}`}
             </Text>
 
             <Pressable
@@ -296,201 +599,3 @@ export default function HomeScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#F7F3E8',
-  },
-
-  container: {
-    flex: 1,
-    backgroundColor: '#F7F3E8',
-    paddingHorizontal: 20,
-  },
-
-  scrollContent: {
-    paddingBottom: 30,
-  },
-
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 15,
-    marginBottom: 20,
-  },
-
-  smallTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#2F7F8F',
-    letterSpacing: 1.5,
-  },
-
-  title: {
-    fontSize: 34,
-    fontWeight: '800',
-    color: '#253A32',
-    marginTop: 2,
-  },
-
-  subtitle: {
-    fontSize: 14,
-    color: '#77736B',
-    marginTop: 2,
-  },
-
-  profileButton: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: '#DCE9E8',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  profileIcon: {
-    fontSize: 21,
-  },
-
-  search: {
-    height: 52,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 18,
-    borderWidth: 1,
-    borderColor: '#D8E4E2',
-  },
-
-  searchIcon: {
-    fontSize: 28,
-    color: '#2F7F8F',
-    marginRight: 10,
-  },
-
-  searchText: {
-    fontSize: 15,
-    color: '#99958C',
-  },
-
-  mapCard: {
-    height: 210,
-    borderRadius: 22,
-    overflow: 'hidden',
-    marginBottom: 22,
-  },
-
-  map: {
-    flex: 1,
-  },
-
-  marker: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  markerNormal: {
-    backgroundColor: '#6B8E5A',
-  },
-
-  markerSelected: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#2F7F8F',
-    borderWidth: 4,
-  },
-
-  markerDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#FFFFFF',
-  },
-
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#253A32',
-  },
-
-  seeMore: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#2F7F8F',
-  },
-
-  cardsContainer: {
-    paddingBottom: 30,
-  },
-
-  placeCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E3E1D8',
-  },
-
-  placeIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: '#E5EFE4',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-
-  placeIconText: {
-    fontSize: 22,
-  },
-
-  placeInfo: {
-    flex: 1,
-  },
-
-  placeName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#30352F',
-  },
-
-  placeCategory: {
-    fontSize: 12,
-    color: '#77736B',
-    marginTop: 2,
-  },
-
-  placeDistance: {
-    fontSize: 12,
-    color: '#6B8E5A',
-    fontWeight: '600',
-    marginTop: 3,
-  },
-
-  arrow: {
-    fontSize: 28,
-    color: '#2F7F8F',
-    paddingHorizontal: 5,
-  },
-});

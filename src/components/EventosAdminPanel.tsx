@@ -13,6 +13,9 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 
+import { Colors } from '@/constants/theme';
+import { useThemeContext } from '@/contexts/ThemeContext';
+
 import {
     consultarAPI,
     LugarAPI,
@@ -53,8 +56,6 @@ interface Props {
 
 type ModoFormulario = 'crear' | 'editar' | 'reprogramar';
 type TipoUbicacion = 'catalogo' | 'libre';
-
-const COLOR = '#315C49';
 
 function fechaActual(): string {
     const ahora = new Date();
@@ -115,6 +116,8 @@ export default function EventosAdminPanel({
     onRecargar,
 }: Props) {
     const [modo, setModo] = useState<ModoFormulario | null>(null);
+    const { colors } = useThemeContext();
+    const styles = crearEstilos(colors);
     // --------------------------------------------------
     // FILTROS DE EVENTOS
     // --------------------------------------------------
@@ -832,7 +835,7 @@ export default function EventosAdminPanel({
                                             onPress={() => cambiarEstado(evento, valor)}
                                         >
                                             {actualizandoEstado === evento.id ? (
-                                                <ActivityIndicator size="small" color={COLOR} />
+                                                <ActivityIndicator size="small" color={colors.primary} />
                                             ) : (
                                                 <Text
                                                     style={[
@@ -1087,7 +1090,7 @@ export default function EventosAdminPanel({
                         onPress={guardarEvento}
                     >
                         {guardando ? (
-                            <ActivityIndicator color="#FFFFFF" />
+                            <ActivityIndicator color={colors.onPrimary} />
                         ) : (
                             <Text style={styles.textoBoton}>
                                 {modo === 'crear'
@@ -1112,217 +1115,221 @@ export default function EventosAdminPanel({
     );
 }
 
-const styles = StyleSheet.create({
-    tarjeta: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 14,
-        padding: 16,
-        marginTop: 14,
-        borderWidth: 1,
-        borderColor: '#E5E2D9',
-        gap: 10,
-    },
-    tituloTarjeta: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#294C3D',
-    },
-    textoSecundario: {
-        color: '#716F68',
-        fontSize: 14,
-        lineHeight: 20,
-    },
-    etiqueta: {
-        color: '#4D5149',
-        fontSize: 13,
-        fontWeight: '700',
-        marginTop: 5,
-    },
-    campo: {
-        borderWidth: 1,
-        borderColor: '#D8D6CD',
-        borderRadius: 9,
-        paddingHorizontal: 12,
-        paddingVertical: 11,
-        color: '#343A34',
-        backgroundColor: '#FFFFFF',
-        fontSize: 14,
-    },
-    campoMultilinea: {
-        minHeight: 100,
-    },
-    botonPrincipal: {
-        backgroundColor: COLOR,
-        borderRadius: 10,
-        padding: 14,
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: 48,
-        marginTop: 10,
-    },
-    textoBoton: {
-        color: '#FFFFFF',
-        fontWeight: '700',
-        fontSize: 14,
-    },
-    botonSecundario: {
-        borderWidth: 1,
-        borderColor: COLOR,
-        borderRadius: 9,
-        padding: 11,
-        alignItems: 'center',
-        justifyContent: 'center',
-        flex: 1,
-    },
-    textoBotonSecundario: {
-        color: COLOR,
-        fontWeight: '700',
-        fontSize: 13,
-    },
-    filaAcciones: {
-        flexDirection: 'row',
-        gap: 8,
-    },
-    estadoActual: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        flexWrap: 'wrap',
-    },
-    estadoTexto: {
-        fontWeight: '800',
-        color: COLOR,
-        fontSize: 12,
-    },
-    estadoCancelado: {
-        color: '#B04444',
-    },
-    estadoSuspendido: {
-        color: '#A36B20',
-    },
-    estadoFinalizado: {
-        color: '#77736B',
-    },
-    filaOpciones: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 7,
-    },
-    botonOpcion: {
-        flexGrow: 1,
-        borderWidth: 1,
-        borderColor: '#D8D6CD',
-        borderRadius: 9,
-        padding: 10,
-        alignItems: 'center',
-    },
-    botonOpcionActivo: {
-        backgroundColor: '#E7EFE9',
-        borderColor: COLOR,
-    },
-    textoOpcion: {
-        color: '#5E625B',
-        fontSize: 12,
-        fontWeight: '600',
-        textAlign: 'center',
-    },
-    textoOpcionActivo: {
-        color: COLOR,
-        fontWeight: '800',
-    },
-    botonEstado: {
-        flex: 1,
-        minWidth: 90,
-        borderWidth: 1,
-        borderColor: '#D8D6CD',
-        borderRadius: 9,
-        padding: 9,
-        alignItems: 'center',
-    },
-    deshabilitado: {
-        opacity: 0.5,
-    },
-    listaLugares: {
-        maxHeight: 190,
-        borderWidth: 1,
-        borderColor: '#E5E2D9',
-        borderRadius: 9,
-    },
-    opcionLugar: {
-        padding: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: '#EEECE6',
-    },
-    opcionLugarActiva: {
-        backgroundColor: '#E7EFE9',
-    },
-    nombreLugar: {
-        color: '#4D5149',
-        fontSize: 14,
-    },
-    nombreLugarActivo: {
-        color: COLOR,
-        fontWeight: '800',
-    },
-    imagen: {
-        width: '100%',
-        height: 180,
-        borderRadius: 10,
-        backgroundColor: '#EEECE6',
-    },
-    botonQuitarImagen: {
-        padding: 8,
-        alignItems: 'center',
-    },
-    textoQuitarImagen: {
-        color: '#B04444',
-        fontSize: 13,
-        fontWeight: '600',
-    },
-    aviso: {
-        color: '#80602D',
-        backgroundColor: '#F8F0DF',
-        padding: 12,
-        borderRadius: 9,
-        lineHeight: 20,
-        fontSize: 13,
-    },
-    botonCancelar: {
-        padding: 13,
-        alignItems: 'center',
-    },
-    textoCancelar: {
-        color: '#716F68',
-        fontWeight: '600',
-    },
+function crearEstilos(
+    colors: (typeof Colors)[keyof typeof Colors],
+) {
+    return StyleSheet.create({
+        tarjeta: {
+            backgroundColor: colors.backgroundElement,
+            borderRadius: 14,
+            padding: 16,
+            marginTop: 14,
+            borderWidth: 1,
+            borderColor: colors.border,
+            gap: 10,
+        },
+        tituloTarjeta: {
+            fontSize: 18,
+            fontWeight: '700',
+            color: colors.text,
+        },
+        textoSecundario: {
+            color: colors.textSecondary,
+            fontSize: 14,
+            lineHeight: 20,
+        },
+        etiqueta: {
+            color: colors.text,
+            fontSize: 13,
+            fontWeight: '700',
+            marginTop: 5,
+        },
+        campo: {
+            borderWidth: 1,
+            borderColor: colors.inputBorder,
+            borderRadius: 9,
+            paddingHorizontal: 12,
+            paddingVertical: 11,
+            color: colors.text,
+            backgroundColor: colors.inputBackground,
+            fontSize: 14,
+        },
+        campoMultilinea: {
+            minHeight: 100,
+        },
+        botonPrincipal: {
+            backgroundColor: colors.primary,
+            borderRadius: 10,
+            padding: 14,
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: 48,
+            marginTop: 10,
+        },
+        textoBoton: {
+            color: colors.onPrimary,
+            fontWeight: '700',
+            fontSize: 14,
+        },
+        botonSecundario: {
+            borderWidth: 1,
+            borderColor: colors.primary,
+            borderRadius: 9,
+            padding: 11,
+            alignItems: 'center',
+            justifyContent: 'center',
+            flex: 1,
+        },
+        textoBotonSecundario: {
+            color: colors.primary,
+            fontWeight: '700',
+            fontSize: 13,
+        },
+        filaAcciones: {
+            flexDirection: 'row',
+            gap: 8,
+        },
+        estadoActual: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 8,
+            flexWrap: 'wrap',
+        },
+        estadoTexto: {
+            fontWeight: '800',
+            color: colors.success,
+            fontSize: 12,
+        },
+        estadoCancelado: {
+            color: colors.danger,
+        },
+        estadoSuspendido: {
+            color: colors.warning,
+        },
+        estadoFinalizado: {
+            color: colors.textSecondary,
+        },
+        filaOpciones: {
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: 7,
+        },
+        botonOpcion: {
+            flexGrow: 1,
+            borderWidth: 1,
+            borderColor: colors.inputBorder,
+            borderRadius: 9,
+            padding: 10,
+            alignItems: 'center',
+        },
+        botonOpcionActivo: {
+            backgroundColor: colors.backgroundSelected,
+            borderColor: colors.primary,
+        },
+        textoOpcion: {
+            color: colors.textSecondary,
+            fontSize: 12,
+            fontWeight: '600',
+            textAlign: 'center',
+        },
+        textoOpcionActivo: {
+            color: colors.primary,
+            fontWeight: '800',
+        },
+        botonEstado: {
+            flex: 1,
+            minWidth: 90,
+            borderWidth: 1,
+            borderColor: colors.inputBorder,
+            borderRadius: 9,
+            padding: 9,
+            alignItems: 'center',
+        },
+        deshabilitado: {
+            opacity: 0.5,
+        },
+        listaLugares: {
+            maxHeight: 190,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 9,
+        },
+        opcionLugar: {
+            padding: 12,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
+        },
+        opcionLugarActiva: {
+            backgroundColor: colors.backgroundSelected,
+        },
+        nombreLugar: {
+            color: colors.text,
+            fontSize: 14,
+        },
+        nombreLugarActivo: {
+            color: colors.primary,
+            fontWeight: '800',
+        },
+        imagen: {
+            width: '100%',
+            height: 180,
+            borderRadius: 10,
+            backgroundColor: colors.backgroundSelected,
+        },
+        botonQuitarImagen: {
+            padding: 8,
+            alignItems: 'center',
+        },
+        textoQuitarImagen: {
+            color: colors.danger,
+            fontSize: 13,
+            fontWeight: '600',
+        },
+        aviso: {
+            color: colors.warning,
+            backgroundColor: colors.warningBackground,
+            padding: 12,
+            borderRadius: 9,
+            lineHeight: 20,
+            fontSize: 13,
+        },
+        botonCancelar: {
+            padding: 13,
+            alignItems: 'center',
+        },
+        textoCancelar: {
+            color: colors.textSecondary,
+            fontWeight: '600',
+        },
 
-    // FILTROS DE EVENTOS
+        // FILTROS DE EVENTOS
 
-    filaFechas: {
-        flexDirection: 'row',
-        gap: 8,
-    },
-    campoFechaFiltro: {
-        flex: 1,
-        minWidth: 0,
-        fontSize: 12,
-        paddingHorizontal: 8,
-    },
-    textoResultados: {
-        color: COLOR,
-        fontSize: 13,
-        fontWeight: '700',
-        marginTop: 5,
-    },
-    botonLimpiarFiltros: {
-        alignItems: 'center',
-        padding: 10,
-        borderRadius: 9,
-        backgroundColor: '#F1F0EB',
-    },
-    textoBotonLimpiar: {
-        color: '#716F68',
-        fontSize: 13,
-        fontWeight: '700',
-    },
-});
+        filaFechas: {
+            flexDirection: 'row',
+            gap: 8,
+        },
+        campoFechaFiltro: {
+            flex: 1,
+            minWidth: 0,
+            fontSize: 12,
+            paddingHorizontal: 8,
+        },
+        textoResultados: {
+            color: colors.primary,
+            fontSize: 13,
+            fontWeight: '700',
+            marginTop: 5,
+        },
+        botonLimpiarFiltros: {
+            alignItems: 'center',
+            padding: 10,
+            borderRadius: 9,
+            backgroundColor: colors.backgroundSelected,
+        },
+        textoBotonLimpiar: {
+            color: colors.textSecondary,
+            fontSize: 13,
+            fontWeight: '700',
+        },
+    });
+}

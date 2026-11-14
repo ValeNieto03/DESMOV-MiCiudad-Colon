@@ -15,9 +15,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
 import { iniciarSesion } from '@/servicios/autenticacion';
+import { registrarDispositivoPush } from '@/servicios/notificaciones-push';
+
+import { useThemeContext } from '@/contexts/ThemeContext';
+import { Colors } from '@/constants/theme';
 
 export default function LoginScreen() {
     const router = useRouter();
+
+    const { colors, establecerUsuario } = useThemeContext();
+    const styles = crearEstilos(colors);
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -36,7 +43,11 @@ export default function LoginScreen() {
         try {
             setCargando(true);
 
-            await iniciarSesion(email, password);
+            const resultado = await iniciarSesion(email, password);
+
+            await establecerUsuario(resultado.usuario);
+
+            await registrarDispositivoPush();
 
             Alert.alert(
                 '¡Bienvenido!',
@@ -108,7 +119,7 @@ export default function LoginScreen() {
                         <TextInput
                             style={styles.input}
                             placeholder="Ingresá tu email"
-                            placeholderTextColor="#99968E"
+                            placeholderTextColor={colors.textSecondary}
                             value={email}
                             onChangeText={setEmail}
                             keyboardType="email-address"
@@ -125,7 +136,7 @@ export default function LoginScreen() {
                             <TextInput
                                 style={styles.passwordInput}
                                 placeholder="Ingresá tu contraseña"
-                                placeholderTextColor="#99968E"
+                                placeholderTextColor={colors.textSecondary}
                                 value={password}
                                 onChangeText={setPassword}
                                 secureTextEntry={!mostrarPassword}
@@ -178,149 +189,153 @@ export default function LoginScreen() {
     );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#F7F3E8',
-    },
+function crearEstilos(
+    colors: (typeof Colors)[keyof typeof Colors],
+) {
+    return StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: colors.background,
+        },
 
-    keyboard: {
-        flex: 1,
-    },
+        keyboard: {
+            flex: 1,
+        },
 
-    content: {
-        flexGrow: 1,
-        paddingHorizontal: 24,
-        paddingTop: 25,
-        paddingBottom: 30,
-        justifyContent: 'center',
-    },
+        content: {
+            flexGrow: 1,
+            paddingHorizontal: 24,
+            paddingTop: 25,
+            paddingBottom: 30,
+            justifyContent: 'center',
+        },
 
-    header: {
-        alignItems: 'center',
-        marginBottom: 28,
-    },
+        header: {
+            alignItems: 'center',
+            marginBottom: 28,
+        },
 
-    logoContainer: {
-        width: 68,
-        height: 68,
-        borderRadius: 34,
-        backgroundColor: '#DCE9E8',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 15,
-    },
+        logoContainer: {
+            width: 68,
+            height: 68,
+            borderRadius: 34,
+            backgroundColor: colors.backgroundSelected,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginBottom: 15,
+        },
 
-    logoIcon: {
-        fontSize: 31,
-    },
+        logoIcon: {
+            fontSize: 31,
+        },
 
-    smallTitle: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#2F7F8F',
-        letterSpacing: 1.8,
-        marginBottom: 4,
-    },
+        smallTitle: {
+            fontSize: 12,
+            fontWeight: '700',
+            color: colors.primary,
+            letterSpacing: 1.8,
+            marginBottom: 4,
+        },
 
-    title: {
-        fontSize: 30,
-        fontWeight: '800',
-        color: '#253A32',
-        marginBottom: 9,
-        textAlign: 'center',
-    },
+        title: {
+            fontSize: 30,
+            fontWeight: '800',
+            color: colors.text,
+            marginBottom: 9,
+            textAlign: 'center',
+        },
 
-    description: {
-        fontSize: 14,
-        lineHeight: 21,
-        color: '#77736B',
-        textAlign: 'center',
-        maxWidth: 330,
-    },
+        description: {
+            fontSize: 14,
+            lineHeight: 21,
+            color: colors.textSecondary,
+            textAlign: 'center',
+            maxWidth: 330,
+        },
 
-    form: {
-        width: '100%',
-    },
+        form: {
+            width: '100%',
+        },
 
-    label: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: '#253A32',
-        marginBottom: 7,
-    },
+        label: {
+            fontSize: 14,
+            fontWeight: '700',
+            color: colors.text,
+            marginBottom: 7,
+        },
 
-    input: {
-        height: 52,
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#E3E1D8',
-        borderRadius: 12,
-        paddingHorizontal: 15,
-        fontSize: 16,
-        color: '#253A32',
-        marginBottom: 17,
-    },
+        input: {
+            height: 52,
+            backgroundColor: colors.inputBackground,
+            borderWidth: 1,
+            borderColor: colors.inputBorder,
+            borderRadius: 12,
+            paddingHorizontal: 15,
+            fontSize: 16,
+            color: colors.text,
+            marginBottom: 17,
+        },
 
-    passwordContainer: {
-        height: 52,
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#E3E1D8',
-        borderRadius: 12,
-        marginBottom: 17,
-    },
+        passwordContainer: {
+            height: 52,
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: colors.inputBackground,
+            borderWidth: 1,
+            borderColor: colors.inputBorder,
+            borderRadius: 12,
+            marginBottom: 17,
+        },
 
-    passwordInput: {
-        flex: 1,
-        height: '100%',
-        paddingHorizontal: 15,
-        fontSize: 16,
-        color: '#253A32',
-    },
+        passwordInput: {
+            flex: 1,
+            height: '100%',
+            paddingHorizontal: 15,
+            fontSize: 16,
+            color: colors.text,
+        },
 
-    eyeButton: {
-        height: '100%',
-        paddingHorizontal: 15,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
+        eyeButton: {
+            height: '100%',
+            paddingHorizontal: 15,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
 
-    eyeText: {
-        fontSize: 20,
-    },
+        eyeText: {
+            fontSize: 20,
+        },
 
-    button: {
-        height: 52,
-        borderRadius: 12,
-        backgroundColor: '#2F7F8F',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 7,
-    },
+        button: {
+            height: 52,
+            borderRadius: 12,
+            backgroundColor: colors.primary,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginTop: 7,
+        },
 
-    buttonDisabled: {
-        opacity: 0.6,
-    },
+        buttonDisabled: {
+            opacity: 0.6,
+        },
 
-    buttonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '800',
-    },
+        buttonText: {
+            color: colors.onPrimary,
+            fontSize: 16,
+            fontWeight: '800',
+        },
 
-    secondaryButton: {
-        height: 52,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 8,
-    },
+        secondaryButton: {
+            height: 52,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginTop: 8,
+        },
 
-    secondaryButtonText: {
-        color: '#2F7F8F',
-        fontSize: 15,
-        fontWeight: '800',
-    },
-});
+        secondaryButtonText: {
+            color: colors.primary,
+            fontSize: 15,
+            fontWeight: '800',
+        },
+    });
+}

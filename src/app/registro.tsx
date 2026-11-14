@@ -16,9 +16,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
 import { registrarUsuario } from '@/servicios/autenticacion';
+import { registrarDispositivoPush } from '@/servicios/notificaciones-push';
+import { useThemeContext } from '@/contexts/ThemeContext';
+import { Colors } from '@/constants/theme';
 
 export default function RegistroScreen() {
     const router = useRouter();
+    const { colors, establecerUsuario } = useThemeContext();
+    const styles = crearEstilos(colors);
 
     const repetirPasswordRef =
         useRef<import('react-native').TextInputInstance>(null);
@@ -77,11 +82,15 @@ export default function RegistroScreen() {
         try {
             setCargando(true);
 
-            await registrarUsuario(
+            const resultado = await registrarUsuario(
                 nombre,
                 email,
                 password
             );
+
+            await establecerUsuario(resultado.usuario);
+
+            await registrarDispositivoPush();
 
             Alert.alert(
                 '¡Cuenta creada!',
@@ -166,7 +175,7 @@ export default function RegistroScreen() {
                         <TextInput
                             style={styles.input}
                             placeholder="Tu nombre"
-                            placeholderTextColor="#99958C"
+                            placeholderTextColor={colors.textSecondary}
                             value={nombre}
                             onChangeText={setNombre}
                             autoCapitalize="words"
@@ -183,7 +192,7 @@ export default function RegistroScreen() {
                         <TextInput
                             style={styles.input}
                             placeholder="tu@email.com"
-                            placeholderTextColor="#99958C"
+                            placeholderTextColor={colors.textSecondary}
                             value={email}
                             onChangeText={setEmail}
                             keyboardType="email-address"
@@ -203,7 +212,7 @@ export default function RegistroScreen() {
                             <TextInput
                                 style={styles.passwordInput}
                                 placeholder="Mínimo 8 caracteres"
-                                placeholderTextColor="#99958C"
+                                placeholderTextColor={colors.textSecondary}
                                 value={password}
                                 onChangeText={setPassword}
                                 secureTextEntry={!mostrarPassword}
@@ -238,7 +247,7 @@ export default function RegistroScreen() {
                                 ref={repetirPasswordRef}
                                 style={styles.passwordInput}
                                 placeholder="Volvé a ingresar tu contraseña"
-                                placeholderTextColor="#99958C"
+                                placeholderTextColor={colors.textSecondary}
                                 value={repetirPassword}
                                 onChangeText={setRepetirPassword}
                                 secureTextEntry={!mostrarRepetirPassword}
@@ -298,137 +307,141 @@ export default function RegistroScreen() {
     );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#F7F3E8',
-    },
+function crearEstilos(
+    colors: (typeof Colors)[keyof typeof Colors],
+) {
+    return StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: colors.background,
+        },
 
-    keyboard: {
-        flex: 1,
-    },
+        keyboard: {
+            flex: 1,
+        },
 
-    content: {
-        flexGrow: 1,
-        paddingHorizontal: 24,
-        paddingTop: 20,
-        paddingBottom: 30,
-    },
+        content: {
+            flexGrow: 1,
+            paddingHorizontal: 24,
+            paddingTop: 20,
+            paddingBottom: 30,
+        },
 
-    backButton: {
-        alignSelf: 'flex-start',
-        marginBottom: 30,
-    },
+        backButton: {
+            alignSelf: 'flex-start',
+            marginBottom: 30,
+        },
 
-    backText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#2F7F8F',
-    },
+        backText: {
+            fontSize: 16,
+            fontWeight: '600',
+            color: colors.primary,
+        },
 
-    header: {
-        marginBottom: 28,
-    },
+        header: {
+            marginBottom: 28,
+        },
 
-    title: {
-        fontSize: 30,
-        fontWeight: '800',
-        color: '#253A32',
-    },
+        title: {
+            fontSize: 30,
+            fontWeight: '800',
+            color: colors.text,
+        },
 
-    subtitle: {
-        fontSize: 14,
-        color: '#77736B',
-        marginTop: 8,
-        lineHeight: 21,
-    },
+        subtitle: {
+            fontSize: 14,
+            color: colors.textSecondary,
+            marginTop: 8,
+            lineHeight: 21,
+        },
 
-    field: {
-        marginBottom: 17,
-    },
+        field: {
+            marginBottom: 17,
+        },
 
-    label: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: '#253A32',
-        marginBottom: 7,
-    },
+        label: {
+            fontSize: 14,
+            fontWeight: '700',
+            color: colors.text,
+            marginBottom: 7,
+        },
 
-    input: {
-        height: 52,
-        backgroundColor: '#FFFFFF',
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: '#D8E4E2',
-        paddingHorizontal: 15,
-        fontSize: 15,
-        color: '#253A32',
-    },
+        input: {
+            height: 52,
+            backgroundColor: colors.inputBackground,
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: colors.inputBorder,
+            paddingHorizontal: 15,
+            fontSize: 15,
+            color: colors.text,
+        },
 
-    passwordContainer: {
-        height: 52,
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: '#D8E4E2',
-    },
+        passwordContainer: {
+            height: 52,
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: colors.inputBackground,
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: colors.inputBorder,
+        },
 
-    passwordInput: {
-        flex: 1,
-        height: '100%',
-        paddingHorizontal: 15,
-        fontSize: 15,
-        color: '#253A32',
-    },
+        passwordInput: {
+            flex: 1,
+            height: '100%',
+            paddingHorizontal: 15,
+            fontSize: 15,
+            color: colors.text,
+        },
 
-    eyeButton: {
-        height: '100%',
-        paddingHorizontal: 15,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
+        eyeButton: {
+            height: '100%',
+            paddingHorizontal: 15,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
 
-    eyeText: {
-        fontSize: 20,
-    },
+        eyeText: {
+            fontSize: 20,
+        },
 
-    registerButton: {
-        height: 52,
-        backgroundColor: '#2F7F8F',
-        borderRadius: 15,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 8,
-    },
+        registerButton: {
+            height: 52,
+            backgroundColor: colors.primary,
+            borderRadius: 15,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginTop: 8,
+        },
 
-    registerButtonDisabled: {
-        opacity: 0.6,
-    },
+        registerButtonDisabled: {
+            opacity: 0.6,
+        },
 
-    registerButtonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '800',
-    },
+        registerButtonText: {
+            color: colors.onPrimary,
+            fontSize: 16,
+            fontWeight: '800',
+        },
 
-    loginContainer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 22,
-        gap: 5,
-    },
+        loginContainer: {
+            flexDirection: 'row',
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginTop: 22,
+            gap: 5,
+        },
 
-    loginText: {
-        fontSize: 14,
-        color: '#77736B',
-    },
+        loginText: {
+            fontSize: 14,
+            color: colors.textSecondary,
+        },
 
-    loginLink: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: '#2F7F8F',
-    },
-});
+        loginLink: {
+            fontSize: 14,
+            fontWeight: '700',
+            color: colors.primary,
+        },
+    });
+}

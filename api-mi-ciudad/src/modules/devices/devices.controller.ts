@@ -1,9 +1,9 @@
-import { Body, Controller, Delete, HttpCode, Param, Post, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Res } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import type { Dispositivo, PruebaNotificacion, RespuestaUno } from '../../../contract/api.js';
 import { UsuarioActual, type UsuarioAutenticado } from '../../common/auth/decorators.js';
-import { respuestaUno } from '../../common/response/response.js';
+import { respuestaLista, respuestaUno } from '../../common/response/response.js';
 import { ejemploError } from '../../common/swagger/examples.js';
 import { DispositivosServicio } from './devices.service.js';
 import { RegistrarDispositivoDto } from './dto/register-device.dto.js';
@@ -14,7 +14,46 @@ const EJEMPLO = { tokenExpo: 'ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]', plataf
 @ApiBearerAuth()
 @Controller('dispositivos')
 export class DispositivosControlador {
-  constructor(private readonly dispositivos: DispositivosServicio) {}
+  constructor(private readonly dispositivos: DispositivosServicio) { }
+
+  @Get()
+  @ApiOperation({
+    summary: 'Consultar mis dispositivos registrados para notificaciones',
+    description:
+      'Con sesión. Devuelve solamente la plataforma y fecha de registro de los dispositivos de la cuenta autenticada. No expone tokens Expo.',
+  })
+  @ApiResponse({
+    status: 200,
+    schema: {
+      example: {
+        datos: [
+          {
+            plataforma: 'android',
+            creadoEn: '2026-11-13T23:00:00.000Z',
+          },
+        ],
+        meta: {
+          total: 1,
+          pagina: 1,
+          porPagina: 1,
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'NO_AUTENTICADO',
+    schema: ejemploError('NO_AUTENTICADO'),
+  })
+  async listar(@UsuarioActual() usuario: UsuarioAutenticado) {
+    const dispositivos = await this.dispositivos.listar(usuario.id);
+
+    return respuestaLista(dispositivos, {
+      total: dispositivos.length,
+      pagina: 1,
+      porPagina: Math.max(dispositivos.length, 1),
+    });
+  }
 
   @Post()
   @ApiOperation({

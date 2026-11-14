@@ -1,4 +1,5 @@
-﻿import { Inject, Injectable, Logger } from '@nestjs/common';
+﻿
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   type EnviadorPush,
   type MensajePush,
@@ -24,11 +25,11 @@ export class EnviadorPorHacer implements EnviadorPush {
   constructor(
     @Inject(ENTORNO)
     private readonly entorno: Entorno,
-  ) {}
+  ) { }
 
   async enviar(
     mensajes: MensajePush[],
-  ): Promise<{ tokensInvalidos: string[] }> {
+  ): Promise<{ tokensInvalidos: string[]; aceptado: boolean }> {
     const tokensInvalidos = new Set<string>();
 
     const individuales = mensajes.flatMap((mensaje) =>
@@ -41,7 +42,7 @@ export class EnviadorPorHacer implements EnviadorPush {
     );
 
     if (individuales.length === 0) {
-      return { tokensInvalidos: [] };
+      return { tokensInvalidos: [], aceptado: true };
     }
 
     // En modo registro no se realizan pedidos externos.
@@ -50,8 +51,10 @@ export class EnviadorPorHacer implements EnviadorPush {
         `Modo registro: ${individuales.length} notificaciones preparadas, sin envío a Expo.`,
       );
 
-      return { tokensInvalidos: [] };
+      return { tokensInvalidos: [], aceptado: false };
     }
+
+    let aceptado = true;
 
     // Expo acepta como máximo 100 mensajes por pedido.
     for (let inicio = 0; inicio < individuales.length; inicio += 100) {
@@ -69,44 +72,57 @@ export class EnviadorPorHacer implements EnviadorPush {
         });
 
         if (!respuesta.ok) {
-          this.log.warn(
-            `Expo respondió con HTTP ${respuesta.status}.`,
-          );
+          this.log.warn(`Expo respondió con HTTP ${respuesta.status}.`);
+          aceptado = false;
           continue;
         }
 
         const resultado = (await respuesta.json()) as RespuestaExpo;
 
-        if (!Array.isArray(resultado.data)) {
+        if (
+          !Array.isArray(resultado.data) ||
+          resultado.data.length !== tanda.length
+        ) {
           this.log.warn(
-            'Expo devolvió una respuesta sin la lista de tickets esperada.',
+            'Expo devolvió una cantidad de tickets distinta de la esperada.',
           );
+          aceptado = false;
           continue;
         }
 
         resultado.data.forEach((ticket, indice) => {
+          if (ticket?.status === 'ok') return;
+
           if (
             ticket?.status === 'error' &&
             ticket.details?.error === 'DeviceNotRegistered'
           ) {
             const token = tanda[indice]?.to;
 
-            if (token) {
-              tokensInvalidos.add(token);
-            }
+            if (token) tokensInvalidos.add(token);
+
+            aceptado = false;
+            return;
           }
+
+          this.log.warn(
+            `Expo rechazó un mensaje: ${ticket?.details?.error ?? 'respuesta inválida'}.`,
+          );
+
+          aceptado = false;
         });
       } catch (error) {
         this.log.warn(
-          `No se pudo conectar con Expo: ${
-            error instanceof Error ? error.message : String(error)
+          `No se pudo conectar con Expo: ${error instanceof Error ? error.message : String(error)
           }`,
         );
+        aceptado = false;
       }
     }
 
     return {
       tokensInvalidos: [...tokensInvalidos],
+      aceptado,
     };
   }
 }

@@ -221,3 +221,13 @@ export async function obtenerRolActual(): Promise<RolUsuario | null> {
 
   return null;
 }
+
+
+export async function actualizarUsuarioSesion(
+  usuario: Usuario,
+): Promise<void> {
+  await SecureStore.setItemAsync(
+    USUARIO_KEY,
+    JSON.stringify(usuario),
+  );
+}

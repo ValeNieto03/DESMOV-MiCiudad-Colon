@@ -19,7 +19,7 @@ services:
 
       # La base inicial ya viene incluida en la imagen.
       # Evitamos sembrar nuevamente los audios de demostracion.
-      SEMBRAR_SI_VACIA: "false"
+      SEMBRAR_SI_VACIA: "true"
 
       JWT_SECRETO: ${JWT_SECRETO:-solo-para-desarrollo-no-usar-en-produccion}
 

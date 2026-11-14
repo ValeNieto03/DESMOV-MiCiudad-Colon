@@ -16,13 +16,27 @@ import {
   obtenerSesion,
 } from '@/servicios/autenticacion';
 
+import {
+  darDeBajaDispositivoPush,
+  probarNotificacionPush,
+} from '@/servicios/notificaciones-push';
+
 import { Usuario } from '@/tipos/usuario';
+import { useThemeContext } from '@/contexts/ThemeContext';
 
 export default function YoScreen() {
   const router = useRouter();
 
+  const {
+    preference,
+    colors,
+    setPreference,
+    establecerUsuario,
+  } = useThemeContext();
+
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [cargando, setCargando] = useState(true);
+  const [probandoNotificacion, setProbandoNotificacion] = useState(false);
 
   const cargarSesion = useCallback(async () => {
     try {
@@ -30,22 +44,19 @@ export default function YoScreen() {
 
       const sesion = await obtenerSesion();
 
-      if (sesion) {
-        setUsuario(sesion.usuario);
-      } else {
-        setUsuario(null);
-      }
+      await establecerUsuario(sesion?.usuario ?? null);
+      setUsuario(sesion?.usuario ?? null);
     } catch (error) {
       console.log('Error al obtener la sesión:', error);
       setUsuario(null);
     } finally {
       setCargando(false);
     }
-  }, []);
+  }, [establecerUsuario]);
 
   useFocusEffect(
     useCallback(() => {
-      cargarSesion();
+      void cargarSesion();
     }, [cargarSesion])
   );
 
@@ -62,19 +73,63 @@ export default function YoScreen() {
           text: 'Cerrar sesión',
           style: 'destructive',
           onPress: async () => {
-            await cerrarSesion();
-            setUsuario(null);
+            try {
+              await darDeBajaDispositivoPush();
+              await cerrarSesion();
+              setUsuario(null);
+              await establecerUsuario(null);
+            } catch (error) {
+              console.error('Error al cerrar sesión:', error);
+              Alert.alert(
+                'Error',
+                'No se pudo completar el cierre de sesión.'
+              );
+            }
           },
         },
       ]
     );
   }
 
+  async function manejarProbarNotificacion() {
+    try {
+      setProbandoNotificacion(true);
+
+      const enviadas = await probarNotificacionPush();
+
+      if (enviadas > 0) {
+        Alert.alert(
+          '¡Notificación enviada!',
+          `El servidor realizó el envío a ${enviadas} dispositivo(s). Revisá las notificaciones de tu teléfono.`
+        );
+      } else {
+        Alert.alert(
+          'Sin dispositivos registrados',
+          'Todavía no hay teléfonos registrados para recibir notificaciones push. Cerrá sesión e iniciá nuevamente, aceptando los permisos de notificaciones.'
+        );
+      }
+    } catch (error) {
+      console.error('Error al probar las notificaciones:', error);
+
+      Alert.alert(
+        'Error',
+        'No se pudo enviar la notificación de prueba. Verificá tu conexión y que la sesión esté iniciada.'
+      );
+    } finally {
+      setProbandoNotificacion(false);
+    }
+  }
+
   if (cargando) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView
+        style={[
+          styles.container,
+          { backgroundColor: colors.background },
+        ]}
+      >
         <View style={styles.center}>
-          <Text style={styles.loadingText}>
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
             Cargando...
           </Text>
         </View>
@@ -83,38 +138,141 @@ export default function YoScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      style={[
+        styles.container,
+        { backgroundColor: colors.background },
+      ]}
+    >
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.title}>Yo</Text>
+          <Text style={[styles.title, { color: colors.text }]}>
+            Yo
+          </Text>
 
-          <Text style={styles.subtitle}>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Tu cuenta, favoritos y preferencias
           </Text>
         </View>
 
+        {/* Selector de apariencia para invitados y usuarios registrados */}
+        <View
+          style={[
+            styles.appearanceCard,
+            {
+              backgroundColor: colors.backgroundElement,
+              borderColor: colors.border,
+            },
+          ]}
+        >
+          <Text style={[styles.optionTitle, { color: colors.text }]}>
+            Apariencia
+          </Text>
+
+          <Text
+            style={[
+              styles.optionDescription,
+              {
+                color: colors.textSecondary,
+                marginBottom: 14,
+              },
+            ]}
+          >
+            Elegí cómo querés ver Mi Ciudad.
+          </Text>
+
+          <View style={styles.themeOptions}>
+            {([
+              { value: 'claro', label: 'Claro', icon: '☀️' },
+              { value: 'oscuro', label: 'Oscuro', icon: '🌙' },
+              { value: 'sistema', label: 'Sistema', icon: '📱' },
+            ] as const).map((opcion) => {
+              const seleccionado = preference === opcion.value;
+
+              return (
+                <Pressable
+                  key={opcion.value}
+                  onPress={() => {
+                    void setPreference(opcion.value);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: seleccionado }}
+                  style={[
+                    styles.themeOption,
+                    {
+                      borderColor: seleccionado
+                        ? colors.primary
+                        : colors.border,
+                      backgroundColor: seleccionado
+                        ? colors.backgroundSelected
+                        : colors.background,
+                    },
+                  ]}
+                >
+                  <Text style={styles.themeIcon}>
+                    {opcion.icon}
+                  </Text>
+
+                  <Text
+                    style={[
+                      styles.themeLabel,
+                      {
+                        color: colors.text,
+                        fontWeight: seleccionado ? '800' : '600',
+                      },
+                    ]}
+                  >
+                    {opcion.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
         {!usuario ? (
-          <View style={styles.card}>
+          <View
+            style={[
+              styles.card,
+              {
+                backgroundColor: colors.backgroundElement,
+                borderColor: colors.border,
+              },
+            ]}
+          >
             <Text style={styles.cardIcon}>👤</Text>
 
-            <Text style={styles.cardTitle}>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>
               Iniciá sesión
             </Text>
 
-            <Text style={styles.cardDescription}>
+            <Text
+              style={[
+                styles.cardDescription,
+                { color: colors.textSecondary },
+              ]}
+            >
               Creá tu cuenta o iniciá sesión para guardar
               tus lugares favoritos y agendar los eventos
               que quieras disfrutar.
             </Text>
 
             <Pressable
-              style={styles.primaryButton}
+              style={[
+                styles.primaryButton,
+                { backgroundColor: colors.primary },
+              ]}
               onPress={() => router.push('/login')}
             >
-              <Text style={styles.primaryButtonText}>
+              <Text
+                style={[
+                  styles.primaryButtonText,
+                  { color: colors.onPrimary },
+                ]}
+              >
                 Iniciar sesión
               </Text>
             </Pressable>
@@ -123,32 +281,58 @@ export default function YoScreen() {
               style={styles.secondaryButton}
               onPress={() => router.push('/registro')}
             >
-              <Text style={styles.secondaryButtonText}>
+              <Text
+                style={[
+                  styles.secondaryButtonText,
+                  { color: colors.primary },
+                ]}
+              >
                 Crear una cuenta
               </Text>
             </Pressable>
           </View>
         ) : (
           <>
-            <View style={styles.profileCard}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
+            <View
+              style={[
+                styles.profileCard,
+                {
+                  backgroundColor: colors.backgroundElement,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.avatar,
+                  { backgroundColor: colors.primary },
+                ]}
+              >
+                <Text style={[styles.avatarText, { color: colors.onPrimary }]}>
                   {usuario.nombre.charAt(0).toUpperCase()}
                 </Text>
               </View>
 
               <View style={styles.profileInfo}>
-                <Text style={styles.greeting}>
+                <Text style={[styles.greeting, { color: colors.text }]}>
                   Hola, {usuario.nombre}
                 </Text>
 
-                <Text style={styles.email}>
+                <Text style={[styles.email, { color: colors.textSecondary }]}>
                   {usuario.email}
                 </Text>
               </View>
             </View>
 
-            <View style={styles.optionsCard}>
+            <View
+              style={[
+                styles.optionsCard,
+                {
+                  backgroundColor: colors.backgroundElement,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
               <Pressable
                 style={styles.option}
                 onPress={() => router.push('/favoritos')}
@@ -156,19 +340,31 @@ export default function YoScreen() {
                 <Text style={styles.optionIcon}>❤️</Text>
 
                 <View style={styles.optionContent}>
-                  <Text style={styles.optionTitle}>
+                  <Text style={[styles.optionTitle, { color: colors.text }]}>
                     Mis favoritos
                   </Text>
 
-                  <Text style={styles.optionDescription}>
+                  <Text
+                    style={[
+                      styles.optionDescription,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
                     Lugares que guardaste
                   </Text>
                 </View>
 
-                <Text style={styles.arrow}>›</Text>
+                <Text style={[styles.arrow, { color: colors.textSecondary }]}>
+                  ›
+                </Text>
               </Pressable>
 
-              <View style={styles.separator} />
+              <View
+                style={[
+                  styles.separator,
+                  { backgroundColor: colors.border },
+                ]}
+              />
 
               <Pressable
                 style={styles.option}
@@ -177,24 +373,58 @@ export default function YoScreen() {
                 <Text style={styles.optionIcon}>📅</Text>
 
                 <View style={styles.optionContent}>
-                  <Text style={styles.optionTitle}>
+                  <Text style={[styles.optionTitle, { color: colors.text }]}>
                     Mi agenda
                   </Text>
 
-                  <Text style={styles.optionDescription}>
+                  <Text
+                    style={[
+                      styles.optionDescription,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
                     Eventos que guardaste
                   </Text>
                 </View>
 
-                <Text style={styles.arrow}>›</Text>
+                <Text style={[styles.arrow, { color: colors.textSecondary }]}>
+                  ›
+                </Text>
               </Pressable>
             </View>
 
             <Pressable
-              style={styles.logoutButton}
+              style={[
+                styles.secondaryButton,
+                styles.notificationButton,
+                { borderColor: colors.border },
+              ]}
+              onPress={manejarProbarNotificacion}
+              disabled={probandoNotificacion}
+            >
+              <Text
+                style={[
+                  styles.secondaryButtonText,
+                  { color: colors.primary },
+                ]}
+              >
+                {probandoNotificacion
+                  ? 'Enviando notificación...'
+                  : 'Probar notificaciones push'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={[
+                styles.logoutButton,
+                {
+                  borderColor: colors.danger,
+                  backgroundColor: colors.backgroundElement,
+                },
+              ]}
               onPress={manejarCerrarSesion}
             >
-              <Text style={styles.logoutText}>
+              <Text style={[styles.logoutText, { color: colors.danger }]}>
                 Cerrar sesión
               </Text>
             </Pressable>
@@ -208,24 +438,21 @@ export default function YoScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F6F1',
   },
   content: {
     padding: 24,
     paddingBottom: 40,
   },
   header: {
-    marginBottom: 28,
+    marginBottom: 22,
   },
   title: {
     fontSize: 30,
     fontWeight: '800',
-    color: '#253A32',
   },
   subtitle: {
     marginTop: 8,
     fontSize: 15,
-    color: '#77736B',
   },
   center: {
     flex: 1,
@@ -234,15 +461,37 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 15,
-    color: '#77736B',
+  },
+  appearanceCard: {
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1,
+    marginBottom: 18,
+  },
+  themeOptions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  themeOption: {
+    flex: 1,
+    minHeight: 76,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 5,
+  },
+  themeIcon: {
+    fontSize: 21,
+  },
+  themeLabel: {
+    fontSize: 13,
   },
   card: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 24,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E5E1D8',
   },
   cardIcon: {
     fontSize: 42,
@@ -251,13 +500,11 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#253A32',
   },
   cardDescription: {
     marginTop: 10,
     fontSize: 14,
     lineHeight: 21,
-    color: '#77736B',
     textAlign: 'center',
     marginBottom: 22,
   },
@@ -265,12 +512,10 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 52,
     borderRadius: 14,
-    backgroundColor: '#2F7F8F',
     justifyContent: 'center',
     alignItems: 'center',
   },
   primaryButtonText: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '800',
   },
@@ -283,29 +528,25 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   secondaryButtonText: {
-    color: '#2F7F8F',
     fontSize: 15,
     fontWeight: '700',
   },
   profileCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E5E1D8',
+    marginBottom: 18,
   },
   avatar: {
     width: 58,
     height: 58,
     borderRadius: 29,
-    backgroundColor: '#2F7F8F',
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
-    color: '#FFFFFF',
     fontSize: 24,
     fontWeight: '800',
   },
@@ -316,19 +557,15 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 19,
     fontWeight: '800',
-    color: '#253A32',
   },
   email: {
     marginTop: 4,
     fontSize: 14,
-    color: '#77736B',
   },
   optionsCard: {
-    marginTop: 18,
-    backgroundColor: '#FFFFFF',
+    marginTop: 0,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E5E1D8',
     overflow: 'hidden',
   },
   option: {
@@ -347,34 +584,32 @@ const styles = StyleSheet.create({
   optionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#253A32',
   },
   optionDescription: {
     marginTop: 4,
     fontSize: 13,
-    color: '#77736B',
   },
   arrow: {
     fontSize: 28,
-    color: '#AAA59C',
     marginLeft: 8,
   },
   separator: {
     height: 1,
-    backgroundColor: '#ECE8DF',
     marginLeft: 60,
+  },
+  notificationButton: {
+    borderWidth: 1,
+    marginTop: 18,
   },
   logoutButton: {
     height: 52,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#D8C9C3',
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 22,
   },
   logoutText: {
-    color: '#A34A3A',
     fontSize: 15,
     fontWeight: '700',
   },

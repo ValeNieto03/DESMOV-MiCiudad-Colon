@@ -24,12 +24,12 @@ const EJEMPLO_VISITA: Visita = {
 @ApiBearerAuth()
 @Controller('yo/visitas')
 export class VisitasControlador {
-  constructor(private readonly visitas: VisitasServicio) {}
+  constructor(private readonly visitas: VisitasServicio) { }
 
   @Get()
   @ApiOperation({
     summary: 'Mi recorrido',
-    description: 'Con sesión. Por `fechaHora` ascendente ("en orden"). `porPagina` hasta 500.',
+    description: 'Con sesiÃ³n. Por `fechaHora` ascendente ("en orden"). `porPagina` hasta 500.',
   })
   @ApiResponse({
     status: 200,
@@ -49,14 +49,14 @@ export class VisitasControlador {
   @ApiOperation({
     summary: 'Registrar una visita',
     description:
-      'Con sesión. Idempotente por `id` (cola offline): si mandás un `id` que ya es tuyo, devuelve 200 con ' +
-      'la visita existente sin duplicarla; si es de otra persona, 409 `ID_EN_USO`. `fechaHora` es cuándo ' +
-      'se hizo la visita (no puede estar más de 5 minutos en el futuro). `fotoUri` tiene que venir de ' +
-      '`POST /archivos`. `sincronizada` se ignora. Se puede visitar el mismo lugar más de una vez.',
+      'Con sesiÃ³n. Idempotente por `id` (cola offline): si mandÃ¡s un `id` que ya es tuyo, devuelve 200 con ' +
+      'la visita existente sin duplicarla; si es de otra persona, 409 `ID_EN_USO`. `fechaHora` es cuÃ¡ndo ' +
+      'se hizo la visita (no puede estar mÃ¡s de 5 minutos en el futuro). `fotoUri` tiene que venir de ' +
+      '`POST /archivos`. `sincronizada` se ignora. Se puede visitar el mismo lugar mÃ¡s de una vez.',
   })
   @ApiResponse({
     status: 200,
-    description: 'Ya existía (mismo id, mismo usuario).',
+    description: 'Ya existÃ­a (mismo id, mismo usuario).',
     schema: { example: { datos: EJEMPLO_VISITA, meta: null } },
   })
   @ApiResponse({ status: 201, schema: { example: { datos: EJEMPLO_VISITA, meta: null } } })
@@ -85,10 +85,9 @@ export class VisitasControlador {
 
   @Patch(':id')
   @ApiOperation({
-    summary: 'Agregar la foto o la nota a una visita',
+    summary: 'Actualizar los datos de una visita',
     description:
-      'Con sesión; sólo la persona dueña. Todo es opcional; `null` saca la foto o la nota. La foto puede ' +
-      'llegar después que la visita.',
+      'Con sesión; solo la persona dueña. Permite actualizar la foto y la nota. Ambos campos son opcionales; null saca la foto o la nota.',
   })
   @ApiParam({ name: 'id', example: 'vis-311' })
   @ApiResponse({ status: 200, schema: { example: { datos: EJEMPLO_VISITA, meta: null } } })
